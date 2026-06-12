@@ -11,8 +11,12 @@ const promptInput = $('#promptInput');
 const generateBtn = $('#generateBtn');
 const countSlider = $('#countSlider');
 const countValue = $('#countValue');
-const sizeSelect = $('#sizeSelect');
+const sizeTrigger = $('#sizeTrigger');
+const sizeTriggerText = $('#sizeTriggerText');
+const sizeDropdown = $('#sizeDropdown');
+const sizeDropdownList = $('#sizeDropdownList');
 const modelBadge = $('#modelBadge');
+let currentSize = '2k'; // 当前选中的分辨率
 const refImagePreview = $('#refImagePreview');
 const refImageThumb = $('#refImageThumb');
 const removeRefBtn = $('#removeRefBtn');
@@ -30,12 +34,92 @@ export function init() {
     if (!state.referenceImage) {
       promptInput.placeholder = t('input.placeholder');
     }
-    modelBadge.textContent = t('input.noModel');
+    // 只有未选择模型时才显示占位文字
+    if (!state.activeModelId) {
+      modelBadge.textContent = t('input.noModel');
+    }
+    // 更新模式标签
+    const modeTagEl = document.getElementById('modeTag');
+    if (modeTagEl) {
+      modeTagEl.textContent = state.referenceImage
+        ? ('🖊 ' + t('input.editModeBadge'))
+        : ('🎨 ' + t('input.drawModeBadge'));
+    }
   });
 
   // 数量滑块
   countSlider.addEventListener('input', () => {
     countValue.textContent = countSlider.value;
+  });
+
+  // 分辨率上拉选择器
+  let sizeDropdownOpen = false;
+  sizeTrigger.addEventListener('click', (e) => {
+    e.stopPropagation();
+    sizeDropdownOpen ? closeSizeDropdown() : openSizeDropdown();
+  });
+  document.addEventListener('click', () => {
+    if (sizeDropdownOpen) closeSizeDropdown();
+  });
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && sizeDropdownOpen) closeSizeDropdown();
+  });
+
+  function openSizeDropdown() {
+    sizeDropdownOpen = true;
+    sizeTrigger.classList.add('open');
+    sizeDropdown.classList.remove('hidden');
+  }
+  function closeSizeDropdown() {
+    sizeDropdownOpen = false;
+    sizeTrigger.classList.remove('open');
+    sizeDropdown.classList.add('hidden');
+  }
+
+  function updateSizeSelection(value) {
+    currentSize = value;
+    sizeTriggerText.textContent = value;
+    sizeDropdownList.querySelectorAll('.size-option').forEach(opt => {
+      opt.classList.toggle('active', opt.dataset.size === value);
+    });
+    closeSizeDropdown();
+  }
+
+  // 模型切换时更新滑块 max 和尺寸选项
+  window.addEventListener('modelSelected', (e) => {
+    const { maxN, sizes } = e.detail || {};
+    const max = maxN || 4;
+    countSlider.max = max;
+    // 如果当前值超出新上限，钳制到上限
+    if (parseInt(countSlider.value) > max) {
+      countSlider.value = max;
+      countValue.textContent = max;
+    }
+
+    // maxN<=1：不支持多图，隐藏滑块
+    const countGroup = countSlider.closest('.param-group');
+    if (countGroup) {
+      countGroup.style.display = max <= 1 ? 'none' : '';
+    }
+
+    // 更新分辨率选项
+    if (sizes && sizes.length > 0) {
+      sizeDropdownList.innerHTML = '';
+      sizes.forEach((s) => {
+        const labelMap = { '2048*2048': '2K', '1024*1024': '1K', '4096*4096': '4K', '2k': '2K', '1k': '1K', '4k': '4K', '2K': '2K', '1K': '1K', '4K': '4K' };
+        const label = labelMap[s] || s;
+        const opt = document.createElement('div');
+        opt.className = 'size-option';
+        opt.textContent = label;
+        opt.dataset.size = s;
+        opt.addEventListener('click', () => updateSizeSelection(s));
+        sizeDropdownList.appendChild(opt);
+      });
+      // 默认选中第一个
+      if (sizes.length > 0) {
+        updateSizeSelection(sizes[0]);
+      }
+    }
   });
 
   // 生成按钮
@@ -58,35 +142,6 @@ export function init() {
   removeRefBtn.addEventListener('click', () => {
     state.referenceImage = null;
     refImagePreview.classList.add('hidden');
-  });
-
-  // 拖拽调节输入框高度（手柄在输入框上方）
-  const resizeHandle = $('#resizeHandle');
-  let isResizing = false;
-  let resizeStartY = 0;
-  let resizeStartHeight = 0;
-
-  resizeHandle.addEventListener('mousedown', (e) => {
-    isResizing = true;
-    resizeStartY = e.clientY;
-    resizeStartHeight = promptInput.offsetHeight;
-    document.body.style.cursor = 'ns-resize';
-    document.body.style.userSelect = 'none';
-    e.preventDefault();
-  });
-
-  document.addEventListener('mousemove', (e) => {
-    if (!isResizing) return;
-    const delta = resizeStartY - e.clientY;
-    const newHeight = Math.max(56, Math.min(400, resizeStartHeight + delta));
-    promptInput.style.height = newHeight + 'px';
-  });
-
-  document.addEventListener('mouseup', () => {
-    if (!isResizing) return;
-    isResizing = false;
-    document.body.style.cursor = '';
-    document.body.style.userSelect = '';
   });
 
   // 修改弹窗 — 开始修改
@@ -147,7 +202,7 @@ export async function handleGenerate() {
       model: state.activeModelId,
       prompt,
       n: parseInt(countSlider.value),
-      size: sizeSelect.value,
+      size: currentSize,
       referenceImage: state.referenceImage || undefined,
       sessionId: state.currentSession?.id,
       mode: state.workMode || 'draw',
@@ -208,6 +263,7 @@ export async function handleGenerate() {
 
 // 设置修改模式
 export function enterEditMode(referenceImage, src, id) {
+  const wasInDrawMode = !state.referenceImage;
   state.referenceImage = referenceImage;
   promptInput.value = '';
   promptInput.placeholder = t('input.editPlaceholder');
@@ -218,6 +274,7 @@ export function enterEditMode(referenceImage, src, id) {
     modeTag.classList.remove('edit');
     void modeTag.offsetWidth;
     modeTag.classList.add('edit');
+    // 弹跳动画已取消
   }
   if (inputArea) {
     inputArea.classList.add('edit-mode');
@@ -238,6 +295,7 @@ export function exitEditMode() {
   if (modeTag) {
     modeTag.textContent = '🎨 ' + t('input.drawModeBadge');
     modeTag.classList.remove('edit');
+    // 弹跳动画已取消
   }
   if (inputArea) {
     inputArea.classList.remove('edit-mode');

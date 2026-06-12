@@ -33,7 +33,8 @@ node /path/to/image-gen-app/cli.js generate \
 ## 模型速查
 
 ### 火山方舟
-- `doubao-seedream-5-0-260128` — Seedream 5.0
+- `doubao-seedream-5-0-260128` — Seedream 5.0 Lite
+- `doubao-seedream-5-0-lite-260128` — Seedream 5.0 Lite（别名）
 
 ### 阿里云百炼
 - `qwen-image-2.0-pro` — Qwen Image 2.0 Pro

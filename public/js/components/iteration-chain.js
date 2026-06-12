@@ -7,16 +7,41 @@ const iterationTimeline = $('#iterationTimeline');
 
 const CHAIN_HIDDEN = 'chain-hidden';
 
-/** 清空迭代链条（播放收起动画后清空内容） */
+/**
+ * 两段式时序动画：
+ *
+ * 展开：画布/输入区先分开（0.8s）→ 迭代历史淡入（0.6s，delay 0.8s）
+ * 收起：迭代历史先淡出（0.5s）→ 画布/输入区再合拢（0.8s，delay 0.5s）
+ */
+
+/** 收起：先淡出，再合拢 */
 export function clearChain() {
   if (iterationChain.classList.contains(CHAIN_HIDDEN)) {
     iterationTimeline.innerHTML = '';
     return;
   }
+  // opacity 立即过渡，layout 延迟 0.025s
+  iterationChain.style.transitionDelay = '0.025s, 0.025s, 0.025s, 0.025s, 0s';
+  iterationChain.offsetHeight;
   iterationChain.classList.add(CHAIN_HIDDEN);
-  iterationChain.addEventListener('transitionend', function onHide() {
+  iterationChain.addEventListener('transitionend', function onHide(e) {
+    if (e.propertyName !== 'max-height') return;
     iterationChain.removeEventListener('transitionend', onHide);
+    iterationChain.style.transitionDelay = '';
     iterationTimeline.innerHTML = '';
+  }, { once: true });
+}
+
+/** 展开：先分开，再淡入 */
+function animateExpand() {
+  // layout 立即过渡，opacity 延迟 0.025s
+  iterationChain.style.transitionDelay = '0s, 0s, 0s, 0s, 0.025s';
+  iterationChain.offsetHeight;
+  iterationChain.classList.remove(CHAIN_HIDDEN);
+  iterationChain.addEventListener('transitionend', function onShow(e) {
+    if (e.propertyName !== 'opacity') return;
+    iterationChain.removeEventListener('transitionend', onShow);
+    iterationChain.style.transitionDelay = '';
   }, { once: true });
 }
 
@@ -27,7 +52,7 @@ export function renderChain(iterations) {
     return;
   }
 
-  iterationChain.classList.remove(CHAIN_HIDDEN);
+  const wasHidden = iterationChain.classList.contains(CHAIN_HIDDEN);
   iterationTimeline.innerHTML = '';
 
   iterations.forEach((iter, i) => {
@@ -46,16 +71,18 @@ export function renderChain(iterations) {
     node.appendChild(thumb);
     node.appendChild(label);
 
-    // 点击切换到对应迭代
     node.addEventListener('click', () => {
       window.dispatchEvent(new CustomEvent('switchIteration', { detail: { index: i, iteration: iter } }));
-      // 激活样式
       document.querySelectorAll('.iteration-node').forEach((n) => n.classList.remove('active'));
       node.classList.add('active');
     });
 
     iterationTimeline.appendChild(node);
   });
+
+  if (wasHidden) {
+    animateExpand();
+  }
 }
 
 /** 从前端编辑链渲染 */
@@ -65,7 +92,7 @@ export function renderEditChain(chain) {
     return;
   }
 
-  iterationChain.classList.remove(CHAIN_HIDDEN);
+  const wasHidden = iterationChain.classList.contains(CHAIN_HIDDEN);
   iterationTimeline.innerHTML = '';
 
   chain.forEach((item, i) => {
@@ -83,7 +110,6 @@ export function renderEditChain(chain) {
     node.appendChild(thumb);
     node.appendChild(label);
 
-    // 点击节点 → 预览该版本图片 + 高亮
     node.addEventListener('click', () => {
       window.dispatchEvent(new CustomEvent('lightbox', {
         detail: { src: item.src, prompt: '', id: item.id },
@@ -94,4 +120,8 @@ export function renderEditChain(chain) {
 
     iterationTimeline.appendChild(node);
   });
+
+  if (wasHidden) {
+    animateExpand();
+  }
 }

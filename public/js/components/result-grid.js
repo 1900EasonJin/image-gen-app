@@ -23,7 +23,7 @@ export function showEmpty() {
   // 更新顶部状态标签
   const statusTag = document.getElementById('statusTag');
   if (statusTag) {
-    statusTag.textContent = '暂无数据';
+    statusTag.textContent = t('work.noData');
     statusTag.style.color = '';
   }
 }
@@ -38,6 +38,13 @@ export function renderResult(images) {
   canvasPlaceholder.classList.add('hidden');
   canvasGrid.classList.remove('hidden');
   canvasGrid.innerHTML = '';
+
+  // 更新状态标签
+  const statusTag = document.getElementById('statusTag');
+  if (statusTag) {
+    statusTag.textContent = t('work.generated');
+    statusTag.style.color = '';
+  }
 
   // 根据图片数量设置布局类
   const count = images.length;
@@ -55,11 +62,26 @@ export function renderResult(images) {
     const card = document.createElement('div');
     card.className = 'image-card';
     card.dataset.id = img.id;
+    card.dataset.sourceUrl = img.sourceUrl || img.url || '';
 
     const imgEl = document.createElement('img');
     imgEl.src = imgSrc;
     imgEl.alt = img.id;
     imgEl.loading = 'lazy';
+
+    // 图片加载后，根据实际尺寸动态设置 card 宽高比
+    imgEl.onload = () => {
+      const nw = imgEl.naturalWidth;
+      const nh = imgEl.naturalHeight;
+      if (nw && nh) {
+        // 使用 CSS aspect-ratio 确保容器比例跟随图片
+        card.style.aspectRatio = `${nw} / ${nh}`;
+      }
+    };
+    // 如果图片已缓存立即触发
+    if (imgEl.complete && imgEl.naturalWidth) {
+      card.style.aspectRatio = `${imgEl.naturalWidth} / ${imgEl.naturalHeight}`;
+    }
 
     const overlay = document.createElement('div');
     overlay.className = 'hover-overlay';
@@ -76,7 +98,7 @@ export function renderResult(images) {
       btn.addEventListener('click', (e) => {
         e.stopPropagation();
         const action = btn.dataset.action;
-        handleAction(action, img, imgSrc);
+        handleAction(action, img, imgSrc, card);
       });
     });
 
@@ -100,7 +122,7 @@ function resolveImageSrc(img) {
   return '';
 }
 
-function handleAction(action, img, imgSrc) {
+function handleAction(action, img, imgSrc, card) {
   switch (action) {
     case 'preview':
       window.dispatchEvent(new CustomEvent('lightbox', {
@@ -111,11 +133,43 @@ function handleAction(action, img, imgSrc) {
       downloadImage(img, imgSrc);
       break;
     case 'edit':
-      window.dispatchEvent(new CustomEvent('editImage', {
-        detail: { src: imgSrc, id: img.id, sourceUrl: img.sourceUrl || img.url || null },
-      }));
+      editWithAnimation(img, imgSrc, card);
       break;
   }
+}
+
+/** 多图模式下：所有图一起淡出，选中图以单图样式重新淡入 */
+function editWithAnimation(img, imgSrc, card) {
+  const allCards = canvasGrid.querySelectorAll('.image-card');
+  const sourceUrl = img.sourceUrl || img.url || '';
+
+  if (allCards.length <= 1) {
+    window.dispatchEvent(new CustomEvent('editImage', {
+      detail: { src: imgSrc, id: img.id, sourceUrl },
+    }));
+    return;
+  }
+
+  // 记录选中图的完整数据
+  const selectedImg = { ...img };
+
+  // 第一步：所有图一起淡出
+  allCards.forEach((c) => {
+    c.style.transition = 'opacity 0.4s ease, transform 0.4s ease';
+    c.style.opacity = '0';
+    c.style.transform = 'scale(0.92)';
+  });
+
+  // 第二步：淡出完成后，用单图重新渲染 + 触发编辑
+  setTimeout(() => {
+    renderResult([selectedImg]);
+    // 稍等一帧确保 DOM 已更新，再进入编辑模式
+    requestAnimationFrame(() => {
+      window.dispatchEvent(new CustomEvent('editImage', {
+        detail: { src: imgSrc, id: img.id, sourceUrl },
+      }));
+    });
+  }, 420);
 }
 
 function downloadImage(img, imgSrc) {

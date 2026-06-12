@@ -4,6 +4,8 @@
  * 统一通过 DashScope API 调用
  */
 
+import { safeLog, safeError } from '../lib/safe-log.js';
+
 export default {
   id: 'aliyun',
   name: '阿里云百炼 (Qwen + Wan)',
@@ -23,13 +25,13 @@ export default {
   async connect(apiKey) {
     // 阿里云百炼没有标准模型列表 API，返回预置模型
     const models = [
-      { id: 'qwen-image-max', name: 'Qwen Max', desc: '经典旗舰', maxN: 1, sizes: ['1664*928', '928*1664'] },
-      { id: 'qwen-image-plus', name: 'Qwen Plus', desc: '增强版', maxN: 1, sizes: ['1664*928', '928*1664'] },
-      { id: 'qwen-image-2.0-pro', name: 'Qwen 2.0 Pro', desc: '最新旗舰', maxN: 6, sizes: ['2048*2048', '1280*720', '720*1280'] },
-      { id: 'qwen-image-2.0', name: 'Qwen 2.0', desc: '标准版', maxN: 6, sizes: ['2048*2048', '1280*720', '720*1280'] },
-      { id: 'qwen-image-turbo', name: 'Qwen Turbo', desc: '极速版', maxN: 6, sizes: ['2048*2048', '1280*720', '720*1280'] },
-      { id: 'wan2.7-image-pro', name: 'Wan 2.7 Pro', desc: 'Wan 增强版', maxN: 4, sizes: ['2048*2048'] },
-      { id: 'wan2.7-image', name: 'Wan 2.7', desc: 'Wan 标准版', maxN: 4, sizes: ['2048*2048'] },
+      { id: 'qwen-image-max', name: 'Qwen Max', maxN: 1, sizes: ['1664*928', '928*1664'] },
+      { id: 'qwen-image-plus', name: 'Qwen Plus', maxN: 1, sizes: ['1664*928', '928*1664'] },
+      { id: 'qwen-image-2.0-pro', name: 'Qwen 2.0 Pro', maxN: 6, sizes: ['2048*2048', '1280*720', '720*1280'] },
+      { id: 'qwen-image-2.0', name: 'Qwen 2.0', maxN: 6, sizes: ['2048*2048', '1280*720', '720*1280'] },
+      { id: 'qwen-image-turbo', name: 'Qwen Turbo', maxN: 6, sizes: ['2048*2048', '1280*720', '720*1280'] },
+      { id: 'wan2.7-image-pro', name: 'Wan 2.7 Pro', maxN: 4, sizes: ['2048*2048'] },
+      { id: 'wan2.7-image', name: 'Wan 2.7', maxN: 4, sizes: ['2048*2048'] },
     ];
 
     // 只做非空校验，不做网络验证（验证推迟到实际生图时）
@@ -75,9 +77,9 @@ export default {
         || `data:${referenceImage.mimeType || 'image/png'};base64,${referenceImage.base64}`;
       messages[0].content.unshift({ image: imageUrl });
       const fp = imageUrl.includes('base64,') ? imageUrl.substring(imageUrl.indexOf('base64,') + 7, imageUrl.indexOf('base64,') + 27) : imageUrl.substring(0, 20);
-      console.log(`[Qwen-img2img] model=${model} prompt="${prompt.substring(0, 50)}" refFingerprint=${fp}... refSize≈${(imageUrl.length / 1024).toFixed(0)}KB`);
+      safeLog(`[Qwen-img2img] model=${model} prompt="${prompt.substring(0, 50)}" refFingerprint=${fp}... refSize≈${(imageUrl.length / 1024).toFixed(0)}KB`);
     } else {
-      console.log(`[Qwen-text2img] model=${model} prompt="${prompt.substring(0, 50)}" (无参考图)`);
+      safeLog(`[Qwen-text2img] model=${model} n=${n || 1} size=${size} prompt="${prompt.substring(0, 50)}" (无参考图)`);
     }
 
     const resp = await fetch('https://dashscope.aliyuncs.com/api/v1/services/aigc/multimodal-generation/generation', {
@@ -135,50 +137,63 @@ export default {
    * 适配 Qwen-Image 和 Wan2.7 同步调用的返回格式
    */
   _parseImageResult(data) {
-    let imageUrls = [];
+    const imageUrls = [];
+    const seen = new Set();
 
-    // 主格式：output.choices[] → message.content[] → { image, type: "image" }
-    // Qwen/Wan2.7 同步调用都走这个格式
-    if (data.output?.choices && Array.isArray(data.output.choices)) {
-      for (const choice of data.output.choices) {
-        const contents = choice.message?.content || [];
+    // 辅助：去重添加
+    const addUrl = (url) => {
+      if (url && typeof url === 'string' && url.startsWith('http') && !seen.has(url)) {
+        seen.add(url);
+        imageUrls.push(url);
+      }
+    };
+
+    // 1. output.choices[] → message.content[] → { image, type: "image" }
+    const choices = data.output?.choices;
+    if (Array.isArray(choices)) {
+      safeLog(`[parseImageResult] choices.length=${choices.length}`);
+      for (let i = 0; i < choices.length; i++) {
+        const contents = choices[i].message?.content || [];
+        safeLog(`[parseImageResult] choice[${i}].content.length=${contents.length}`);
         for (const item of contents) {
-          if (item.image && typeof item.image === 'string' && item.image.startsWith('http')) {
-            imageUrls.push(item.image);
-          }
+          if (item.image) addUrl(item.image);
         }
       }
     }
 
-    // 兜底兼容：旧格式 output.results[]（异步任务轮询结果等）
-    if (imageUrls.length === 0 && data.output?.results && Array.isArray(data.output.results)) {
-      imageUrls = data.output.results
-        .map(r => r.url || r.image || r.result_url)
-        .filter(u => typeof u === 'string' && u.startsWith('http'));
+    // 2. output.results[] (旧格式/异步轮询结果)
+    const results = data.output?.results;
+    if (Array.isArray(results)) {
+      safeLog(`[parseImageResult] results.length=${results.length}`);
+      for (const r of results) {
+        addUrl(r.url || r.image || r.result_url);
+      }
     }
-    if (imageUrls.length === 0 && data.output?.result_urls && Array.isArray(data.output.result_urls)) {
-      imageUrls = data.output.result_urls.filter(u => typeof u === 'string' && u.startsWith('http'));
+
+    // 3. output.result_urls[]
+    if (Array.isArray(data.output?.result_urls)) {
+      for (const u of data.output.result_urls) addUrl(u);
     }
-    if (imageUrls.length === 0 && data.output?.result_url && typeof data.output.result_url === 'string') {
-      imageUrls = [data.output.result_url];
-    }
-    if (imageUrls.length === 0 && data.output?.image && typeof data.output.image === 'string') {
-      imageUrls = [data.output.image];
-    }
+
+    // 4. output.result_url / output.image (单图兜底)
+    addUrl(data.output?.result_url);
+    addUrl(data.output?.image);
+
+    safeLog(`[parseImageResult] 最终收集到 ${imageUrls.length} 个图片 URL`);
 
     const images = imageUrls.map((url, i) => ({
       id: `img_${Date.now()}_${i}`,
       url,
-      dataUrl: null,   // 百炼同步调用只返回 OSS 临时 URL，不含 base64
+      dataUrl: null,
       index: i,
     }));
 
-    // 调试信息
     const debug = {
       outputKeys: data.output ? Object.keys(data.output) : [],
-      choicesCount: data.output?.choices?.length || 0,
+      choicesCount: choices?.length || 0,
+      resultsCount: results?.length || 0,
       imagesCount: images.length,
-      rawOutput: JSON.stringify(data.output || {}).substring(0, 500),
+      rawOutput: JSON.stringify(data.output || {}).substring(0, 800),
     };
 
     return { success: true, images, usage: data.usage || null, debug };
@@ -193,9 +208,9 @@ export default {
       const imageUrl = referenceImage.dataUrl
         || `data:${referenceImage.mimeType || 'image/png'};base64,${referenceImage.base64}`;
       messages[0].content.unshift({ image: imageUrl });
-      console.log(`[Wan-img2img] model=${model} prompt="${prompt.substring(0, 50)}" refFingerprint=${imageUrl.substring(imageUrl.indexOf('base64,') + 7, imageUrl.indexOf('base64,') + 27)}...`);
+      safeLog(`[Wan-img2img] model=${model} prompt="${prompt.substring(0, 50)}" refFingerprint=${imageUrl.substring(imageUrl.indexOf('base64,') + 7, imageUrl.indexOf('base64,') + 27)}...`);
     } else {
-      console.log(`[Wan-text2img] model=${model} prompt="${prompt.substring(0, 50)}" (无参考图)`);
+      safeLog(`[Wan-text2img] model=${model} n=${n || 1} size=${size} prompt="${prompt.substring(0, 50)}" (无参考图)`);
     }
 
     // Wan 用 "2K"/"1K"/"4K" 缩写格式，将宽*高格式自动转换

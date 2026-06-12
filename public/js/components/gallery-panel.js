@@ -1,13 +1,45 @@
 import state from '../state.js';
 import { t } from '../i18n.js';
+import { renderResult } from './result-grid.js';
 
 const galleryList = document.getElementById('galleryList');
 const galleryEmpty = document.getElementById('galleryEmpty');
+const galleryPanel = document.getElementById('galleryPanel');
+const galleryResizeHandle = document.getElementById('galleryResizeHandle');
 
 // 所有缩略图数据
 let galleryItems = [];
 
 export function init() {
+  // 画廊宽度拖拽调整
+  let isResizing = false;
+  let resizeStartX = 0;
+  let resizeStartWidth = 0;
+
+  galleryResizeHandle.addEventListener('mousedown', (e) => {
+    isResizing = true;
+    resizeStartX = e.clientX;
+    resizeStartWidth = galleryPanel.offsetWidth;
+    galleryResizeHandle.classList.add('active');
+    document.body.style.cursor = 'col-resize';
+    document.body.style.userSelect = 'none';
+    e.preventDefault();
+  });
+
+  document.addEventListener('mousemove', (e) => {
+    if (!isResizing) return;
+    const delta = resizeStartX - e.clientX;
+    const newWidth = Math.max(100, Math.min(500, resizeStartWidth + delta));
+    galleryPanel.style.width = newWidth + 'px';
+  });
+
+  document.addEventListener('mouseup', () => {
+    if (!isResizing) return;
+    isResizing = false;
+    galleryResizeHandle.classList.remove('active');
+    document.body.style.cursor = '';
+    document.body.style.userSelect = '';
+  });
   // 监听生成完成 → 追加缩略图
   window.addEventListener('imagesGenerated', (e) => {
     const result = e.detail;
@@ -85,22 +117,86 @@ function createThumbElement(id, src, sourceUrl) {
     </button>
   `;
 
-  // 事件：点击缩略图 → 预览
+  // 事件：点击缩略图 → 淡出当前画布，以单图模式淡入显示
   imgEl.addEventListener('click', () => {
-    window.dispatchEvent(new CustomEvent('lightbox', {
-      detail: { src, prompt: state.lastPrompt || '', id },
-    }));
+    const canvasGrid = document.getElementById('canvasGrid');
+    const currentCards = canvasGrid.querySelectorAll('.image-card');
+    
+    if (currentCards.length > 0) {
+      // 有图片时，先淡出再渲染新图
+      currentCards.forEach((c) => {
+        c.style.transition = 'opacity 0.4s ease, transform 0.4s ease';
+        c.style.opacity = '0';
+        c.style.transform = 'scale(0.92)';
+      });
+      
+      setTimeout(() => {
+        renderResult([{
+          id,
+          dataUrl: src,
+          url: sourceUrl || null,
+          sourceUrl: sourceUrl || null,
+        }]);
+      }, 420);
+    } else {
+      // 画布为空，直接渲染
+      renderResult([{
+        id,
+        dataUrl: src,
+        url: sourceUrl || null,
+        sourceUrl: sourceUrl || null,
+      }]);
+    }
   });
 
-  // 事件：操作按钮
+  // 事件：点击修改按钮 → 淡出当前画布，以单图模式淡入新图，再进入编辑模式
   overlay.querySelectorAll('.btn-icon').forEach((btn) => {
     btn.addEventListener('click', (e) => {
       e.stopPropagation();
       const action = btn.dataset.action;
       if (action === 'edit') {
-        window.dispatchEvent(new CustomEvent('editImage', {
-          detail: { src, id, sourceUrl: thumb.dataset.sourceUrl || null },
-        }));
+        const canvasGrid = document.getElementById('canvasGrid');
+        const currentCards = canvasGrid.querySelectorAll('.image-card');
+        
+        if (currentCards.length > 0) {
+          // 淡出所有当前卡片
+          currentCards.forEach((c) => {
+            c.style.transition = 'opacity 0.4s ease, transform 0.4s ease';
+            c.style.opacity = '0';
+            c.style.transform = 'scale(0.92)';
+          });
+          
+          // 420ms后淡入新图并进入编辑模式
+          setTimeout(() => {
+            renderResult([{
+              id,
+              dataUrl: src,
+              url: sourceUrl || null,
+              sourceUrl: sourceUrl || null,
+            }]);
+            
+            // 再等一帧后触发编辑事件
+            requestAnimationFrame(() => {
+              window.dispatchEvent(new CustomEvent('editImage', {
+                detail: { src, id, sourceUrl: thumb.dataset.sourceUrl || null },
+              }));
+            });
+          }, 420);
+        } else {
+          // 画布为空，直接渲染并进入编辑模式
+          renderResult([{
+            id,
+            dataUrl: src,
+            url: sourceUrl || null,
+            sourceUrl: sourceUrl || null,
+          }]);
+          
+          requestAnimationFrame(() => {
+            window.dispatchEvent(new CustomEvent('editImage', {
+              detail: { src, id, sourceUrl: thumb.dataset.sourceUrl || null },
+            }));
+          });
+        }
       }
     });
   });

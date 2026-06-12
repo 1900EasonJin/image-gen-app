@@ -1,6 +1,16 @@
 import { app, BrowserWindow, ipcMain } from 'electron';
 import { createServer } from './server/index.js';
 
+// 防止 EPIPE：stdout/stderr 管道断开时静默处理，避免 Uncaught Exception
+process.stdout.on('error', (err) => {
+  if (err.code === 'EPIPE') return;
+  throw err;
+});
+process.stderr.on('error', (err) => {
+  if (err.code === 'EPIPE') return;
+  throw err;
+});
+
 const PORT = 3456;
 let mainWindow = null;
 

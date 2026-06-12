@@ -55,12 +55,18 @@
       <div class="session-list" id="sessionList">
         <p class="text-hint" data-i18n="sidebar.noSession">暂无历史会话</p>
       </div>
+      <button class="btn btn-secondary new-canvas-btn" id="newSessionBtn">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        <span data-i18n="work.newCanvas">新建画布</span>
+      </button>
       <button class="btn btn-secondary btn-archive-toggle" id="archiveToggleBtn">
         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 8v13H3V8"/><path d="M1 3h22v5H1z"/><path d="M10 12h4"/></svg>
         <span data-i18n="sidebar.archive">归档记录</span>
       </button>
     </div>
   </aside>
+
+  <div class="sidebar-resize-handle resize-bar" id="sidebarResizeHandle"></div>
 
   <!-- 主内容区 —— 工作区布局 -->
   <main class="main-content">
@@ -69,10 +75,6 @@
       <header class="work-header" id="workHeader">
         <div class="work-header-left">
           <span class="status-tag" id="statusTag" data-i18n="work.noData">暂无数据</span>
-          <button class="btn btn-secondary new-canvas-btn" id="newSessionBtn" title="新建画布">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-            <span data-i18n="work.newCanvas">新建画布</span>
-          </button>
         </div>
         <div class="work-header-center">
           <div class="mode-toggle" id="modeToggle">
@@ -92,10 +94,10 @@
             <!-- 生成中遮罩 -->
             <div class="loading-overlay hidden" id="loadingOverlay">
               <div class="loading-content">
-                <div class="loading-dots">
+                <div class="loading-spinner">
                   <span></span><span></span><span></span>
                 </div>
-                <span>正在生成...</span>
+                <span data-i18n="work.generating">正在生成...</span>
               </div>
             </div>
             <!-- 空状态占位 -->
@@ -105,13 +107,12 @@
             <!-- 图片结果网格 -->
             <div class="canvas-grid hidden" id="canvasGrid"></div>
           </div>
+          <div class="canvas-resize-handle" id="canvasResizeHandle"></div>
           <!-- 迭代链条 -->
           <div class="iteration-chain chain-hidden" id="iterationChain">
             <div class="iteration-header">
               <h4 class="iteration-title" data-i18n="iteration.title">迭代历史</h4>
-              <button class="btn-icon btn-exit-edit" id="exitEditBtn" title="退出修改模式">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-              </button>
+              <span class="mode-tag exit-mode-tag" id="exitEditBtn" data-i18n="input.exitEditMode">退出修改模式 ✕</span>
             </div>
             <div class="iteration-timeline" id="iterationTimeline"></div>
           </div>
@@ -119,7 +120,6 @@
           <!-- 底部输入区 -->
           <div class="input-area" id="inputArea">
             <div class="input-wrapper">
-              <div class="resize-handle" id="resizeHandle"></div>
               <textarea class="prompt-input" id="promptInput" data-i18n-placeholder="input.placeholder" placeholder="输入你的图片描述，文本绘制用&quote;双引号&quote;包裹" rows="2"></textarea>
               <div class="ref-image-preview hidden" id="refImagePreview">
                 <img id="refImageThumb" src="" alt="参考图" />
@@ -131,7 +131,7 @@
             <div class="input-toolbar">
               <div class="input-toolbar-left">
                 <span class="model-badge" id="modelBadge" data-i18n="input.noModel">未选择模型</span>
-                <span class="mode-tag" id="modeTag">🎨 生图模式</span>
+                <span class="mode-tag" id="modeTag" data-i18n="input.drawModeBadge">🎨 生图模式</span>
                 <label class="param-group">
                   <span data-i18n="input.count">数量</span>
                   <input type="range" id="countSlider" min="1" max="4" value="1" />
@@ -139,10 +139,15 @@
                 </label>
                 <label class="param-group">
                   <span data-i18n="input.resolution">分辨率</span>
-                  <select id="sizeSelect" class="select select-xs">
-                    <option value="2K">2K</option>
-                    <option value="1K">1K</option>
-                  </select>
+                  <div class="size-selector" id="sizeSelector">
+                    <button class="size-trigger" id="sizeTrigger">
+                      <span id="sizeTriggerText">2K</span>
+                      <svg class="size-trigger-arrow" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+                    </button>
+                    <div class="size-dropdown hidden" id="sizeDropdown">
+                      <div class="size-dropdown-list" id="sizeDropdownList"></div>
+                    </div>
+                  </div>
                 </label>
               </div>
               <div class="input-toolbar-right">
@@ -163,6 +168,8 @@
             </div>
           </div>
         </div>
+
+        <div class="gallery-resize-handle resize-bar" id="galleryResizeHandle"></div>
 
         <!-- 右侧已生成图片面板 -->
         <aside class="gallery-panel" id="galleryPanel">
@@ -197,7 +204,7 @@
     <div class="modal-overlay"></div>
     <div class="modal-content modal-wide">
       <div class="modal-header">
-        <h3>⚙ 设置</h3>
+        <h3 data-i18n="settings.title">⚙ 设置</h3>
         <button class="btn-icon" id="settingsModalClose">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
         </button>
@@ -210,12 +217,12 @@
   <div class="modal hidden" id="editModal">
     <div class="modal-overlay"></div>
     <div class="modal-content">
-      <h3>修改图片</h3>
+      <h3 data-i18n="editModal.title">修改图片</h3>
       <img class="modal-ref-image" id="editModalImage" src="" alt="参考图" />
       <textarea class="prompt-input modal-prompt" id="editModalPrompt" placeholder="描述你想要修改的部分..." rows="3"></textarea>
       <div class="modal-actions">
-        <button class="btn btn-secondary" id="editModalCancel">取消</button>
-        <button class="btn btn-primary" id="editModalSubmit">开始修改</button>
+        <button class="btn btn-secondary" id="editModalCancel" data-i18n="editModal.cancel">取消</button>
+        <button class="btn btn-primary" id="editModalSubmit" data-i18n="editModal.submit">开始修改</button>
       </div>
     </div>
   </div>

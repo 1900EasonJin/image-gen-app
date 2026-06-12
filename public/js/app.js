@@ -13,6 +13,107 @@ import { fetchSessions, fetchArchivedSessions, deleteSession as deleteSessionApi
 import state from './state.js';
 import { t, applyLanguage, setLang, getLang } from './i18n.js';
 
+// 画布高度拖拽调整 — 分屏分割：画布区和输入区同时联动
+function initCanvasResize() {
+  const handle = document.getElementById('canvasResizeHandle');
+  const canvasArea = document.getElementById('canvasArea');
+  const canvasColumn = document.querySelector('.canvas-column');
+  const inputArea = document.getElementById('inputArea');
+  const chain = document.getElementById('iterationChain');
+  if (!handle || !canvasArea || !canvasColumn || !inputArea) return;
+
+  let isResizing = false;
+  let startY = 0;
+  let startCanvasBasis = 0;
+  let startInputBasis = 0;
+
+  // 从 inline flex 或实际高度读取当前的 flex-basis
+  function getBasis(el) {
+    const style = el.style.flex;
+    if (style) {
+      const m = style.match(/0\s+0\s+(\d+)px/);
+      if (m) return parseInt(m[1]);
+    }
+    return el.offsetHeight;
+  }
+
+  // 固定元素占用（手柄 + 迭代链，含 margin）
+  function getFixedHeight() {
+    const hs = getComputedStyle(handle);
+    const hTotal = handle.offsetHeight + (parseFloat(hs.marginTop) || 0) + (parseFloat(hs.marginBottom) || 0);
+    let cTotal = 0;
+    if (chain) {
+      const cs = getComputedStyle(chain);
+      cTotal = chain.offsetHeight + (parseFloat(cs.marginTop) || 0) + (parseFloat(cs.marginBottom) || 0);
+    }
+    return hTotal + cTotal;
+  }
+
+  // 窗口缩放 / 迭代链展开时等比 clamp
+  new ResizeObserver(() => {
+    if (!canvasArea.style.flex && !inputArea.style.flex) return; // 默认布局不动
+    const colH = canvasColumn.clientHeight;
+    const fixed = getFixedHeight();
+    const avail = colH - fixed;
+    const cB = getBasis(canvasArea);
+    const iB = getBasis(inputArea);
+    if (avail <= 100 + 80) return;
+    const ratio = cB / (cB + iB);
+    const newC = Math.max(100, Math.round(avail * ratio));
+    const newI = Math.max(80, avail - newC);
+    canvasArea.style.flex = '0 0 ' + Math.round(newC) + 'px';
+    inputArea.style.flex = '0 0 ' + Math.round(newI) + 'px';
+  }).observe(canvasColumn);
+
+  handle.addEventListener('mousedown', (e) => {
+    isResizing = true;
+    startY = e.clientY;
+    startCanvasBasis = getBasis(canvasArea);
+    startInputBasis = getBasis(inputArea);
+    handle.classList.add('active');
+    document.body.style.cursor = 'row-resize';
+    document.body.style.userSelect = 'none';
+    e.preventDefault();
+  });
+
+  document.addEventListener('mousemove', (e) => {
+    if (!isResizing) return;
+    const delta = e.clientY - startY;
+    const colH = canvasColumn.clientHeight;
+    const fixed = getFixedHeight();
+    const minCanvas = 100;
+    const minInput = 80;
+
+    let newCanvas = startCanvasBasis + delta;
+    // 画布往大拉：压缩输入区
+    if (newCanvas > colH - fixed - minInput) {
+      newCanvas = colH - fixed - minInput;
+    }
+    // 画布往小拉：压缩画布本身
+    if (newCanvas < minCanvas) {
+      newCanvas = minCanvas;
+    }
+    const newInput = colH - fixed - newCanvas;
+
+    canvasArea.style.flex = '0 0 ' + newCanvas + 'px';
+    inputArea.style.flex = '0 0 ' + newInput + 'px';
+  });
+
+  document.addEventListener('mouseup', () => {
+    if (!isResizing) return;
+    isResizing = false;
+    handle.classList.remove('active');
+    document.body.style.cursor = '';
+    document.body.style.userSelect = '';
+  });
+
+  // 双击手柄：恢复默认（画布 flex:1 填充，输入区自然高度）
+  handle.addEventListener('dblclick', () => {
+    canvasArea.style.flex = '';
+    inputArea.style.flex = '';
+  });
+}
+
 async function init() {
   // 应用初始语言
   applyLanguage();
@@ -32,6 +133,7 @@ async function init() {
   inputInit();
   workAreaInit();
   galleryPanelInit();
+  // initCanvasResize(); // 滑块功能已取消
   initArchiveModal();
 
   // 并行初始化：sidebar（缓存秒开）和 sessions 同时加载
@@ -405,15 +507,15 @@ async function loadSessionDetail(sessionId) {
     // 浏览历史时确保退出编辑模式（生图模式）
     exitEditMode();
 
-    // 恢复输入框 prompt
+    // 浏览历史时清空输入框
     const promptInput = document.getElementById('promptInput');
-    promptInput.value = session.prompt || '';
+    promptInput.value = '';
 
     const iterations = session.iterations || [];
     if (iterations.length > 0) {
       const latest = iterations[iterations.length - 1];
 
-      // 最新迭代的图片用于画布展示
+      // 最新迭代的图片用于画布展示（默认只显示第一张）
       const latestImages = (latest.images || []).map((img) => {
         if (img.localPath) {
           return {
@@ -427,7 +529,8 @@ async function loadSessionDetail(sessionId) {
       });
 
       setPrompt(session.prompt || '');
-      renderResult(latestImages);
+      // 默认只展示第一张图片
+      renderResult(latestImages.length > 0 ? [latestImages[0]] : []);
       // 浏览历史时默认生图模式，不显示迭代链
       clearChain();
 

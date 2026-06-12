@@ -184,7 +184,7 @@ function bindAllButtons() {
       const modelName = nameInput.value.trim();
 
       if (!modelId) {
-        showToast('请输入模型 ID', 'error');
+        showToast(t('toast.modelIdRequired'), 'error');
         return;
       }
 
@@ -223,7 +223,7 @@ async function handleConnect(btn, providerId) {
   const apiKey = input.value.trim();
 
   if (!apiKey) {
-    showToast('请输入 API Key', 'error');
+    showToast(t('toast.apiKeyRequired'), 'error');
     return;
   }
 
@@ -312,7 +312,7 @@ async function handleRemoveModel(providerId, modelId) {
       if (state.activeModelId === modelId) {
         state.activeProviderId = null;
         state.activeModelId = null;
-        $('#modelBadge').textContent = '未选择模型';
+        $('#modelBadge').textContent = t('input.noModel');
       }
       
       showToast(t('toast.removeModelSuccess'), 'success');

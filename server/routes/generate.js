@@ -126,6 +126,7 @@ router.post('/', async (req, res, next) => {
     }
 
     // 保存图片到本地
+    console.log(`[generate] API 返回 ${result.images.length} 张图片，开始保存...`);
     const savedImages = [];
     for (const img of result.images) {
       const src = img.dataUrl || img.url;
@@ -160,6 +161,7 @@ router.post('/', async (req, res, next) => {
 
     // 所有图片都没有有效数据时，向前端返回明确错误
     const validImages = savedImages.filter(img => img.dataUrl || img.url || img.localPath);
+    console.log(`[generate] 保存完成: ${savedImages.length} 张, 有效: ${validImages.length} 张`);
     if (validImages.length === 0) {
       console.error('[生成异常] API 返回了图片列表但所有图片均无有效 URL/dataUrl');
       console.error('[调试信息]', JSON.stringify(result.debug || {}));

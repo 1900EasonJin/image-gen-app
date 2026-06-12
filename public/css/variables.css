@@ -46,7 +46,7 @@ html, body {
 
 body {
   display: flex;
-  gap: 10px;
+  gap: 0;
   background: var(--bg-secondary);
 }
 

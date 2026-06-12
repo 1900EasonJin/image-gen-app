@@ -3,6 +3,8 @@
  * API 文档: https://www.volcengine.com/docs/6791/214528
  */
 
+import { safeLog } from '../lib/safe-log.js';
+
 export default {
   id: 'volcengine',
   name: '火山方舟 (Seedream)',
@@ -25,13 +27,27 @@ export default {
 
       const data = await resp.json();
 
+      // 不同 Seedream 版本对 n>1 支持不同（实测确认）
+      // 5.0 Lite / 4.x / 3.0 均只返回 1 张
+      const sizeConfig = {
+        'doubao-seedream-5-0-260128': { sizes: ['2k', '1k', '4k'], maxN: 1, sizeFormat: 'short' },
+        'doubao-seedream-5-0-lite-260128': { sizes: ['2k', '1k', '4k'], maxN: 1, sizeFormat: 'short' },
+        'doubao-seedream-4-5-250428': { sizes: ['2k', '1k'], maxN: 1, sizeFormat: 'short' },
+        'doubao-seedream-4-5-251128': { sizes: ['2k', '1k'], maxN: 1, sizeFormat: 'short' },
+        'doubao-seedream-4-0-250528': { sizes: ['2k', '1k'], maxN: 1, sizeFormat: 'short' },
+        'doubao-seedream-4-0-250828': { sizes: ['2k', '1k'], maxN: 1, sizeFormat: 'short' },
+        'doubao-seedream-3-0-250328': { sizes: ['1k'], maxN: 1, sizeFormat: 'short' },
+        'doubao-seedream-3-0-t2i-250415': { sizes: ['1k'], maxN: 1, sizeFormat: 'short' },
+      };
+
       // 过滤出图片生成模型
       const imageModels = (data.data || [])
         .filter((m) => m.id && m.id.includes('seedream'))
         .map((m) => {
           // 精简显示名称：Seedream X.Y
           const nameMap = {
-            'doubao-seedream-5-0-260128': 'Seedream 5.0',
+            'doubao-seedream-5-0-260128': 'Seedream 5.0 Lite',
+            'doubao-seedream-5-0-lite-260128': 'Seedream 5.0 Lite',
             'doubao-seedream-4-5-250428': 'Seedream 4.5',
             'doubao-seedream-4-0-250528': 'Seedream 4.0',
             'doubao-seedream-3-0-250328': 'Seedream 3.0',
@@ -44,19 +60,13 @@ export default {
             const match = m.id.match(/seedream[- ](\d+\.?\d*)/i);
             nameMap[m.id] = match ? `Seedream ${match[1]}` : m.id;
           }
-          // 版本描述标签
-          const descMap = {
-            '5.0': '最新旗舰',
-            '4.5': '增强版',
-            '4.0': '标准版',
-            '3.0': '基础版',
-          };
-          const versionMatch = nameMap[m.id].match(/Seedream (\d+\.\d+)/);
-          const version = versionMatch ? versionMatch[1] : '';
+          const cfg = sizeConfig[m.id] || { sizes: ['2k', '1k'], maxN: 1, sizeFormat: 'short' };
           return {
             id: m.id,
             name: nameMap[m.id],
-            desc: descMap[version] || m.description || '',
+            maxN: cfg.maxN,
+            sizes: cfg.sizes,
+            sizeFormat: cfg.sizeFormat,
           };
         });
 
@@ -90,12 +100,15 @@ export default {
       }),
     });
 
+    safeLog(`[Seedream-text2img] model=${model} n=${n || 1} size=${size} prompt="${prompt.substring(0, 50)}"`);
+
     if (!resp.ok) {
       const text = await resp.text();
       throw new Error(`火山方舟生图失败 (${resp.status}): ${text}`);
     }
 
     const data = await resp.json();
+    safeLog(`[Seedream-text2img] 响应: data.data.length=${data.data?.length || 0}, 请求n=${n || 1}`);
 
     return {
       success: true,

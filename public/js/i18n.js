@@ -17,7 +17,7 @@ const translations = {
     // Work area
     'work.noData': '暂无数据',
     'work.generated': '已生成',
-    'work.generating': '生成中...',
+    'work.generating': '正在生成...',
     'work.noImage': '暂无图片',
     'work.newCanvas': '新建画布',
 
@@ -27,6 +27,7 @@ const translations = {
     'input.noModel': '未选择模型',
     'input.drawModeBadge': '生图模式',
     'input.editModeBadge': '修改模式',
+    'input.exitEditMode': '退出修改模式 ✕',
     'input.count': '数量',
     'input.resolution': '分辨率',
 
@@ -44,6 +45,8 @@ const translations = {
     'action.download': '下载',
     'action.edit': '修改',
 
+    // Settings
+    'settings.title': '⚙ 设置',
     // Settings
     'settings.title': '⚙ 设置',
     'settings.language': '语言',
@@ -94,6 +97,8 @@ const translations = {
     'toast.removeModelFailed': '删除失败: {0}',
     'toast.editPromptRequired': '请输入修改描述',
     'toast.textStyleTodo': '文本样式功能待实现',
+    'toast.modelIdRequired': '请输入模型 ID',
+    'toast.apiKeyRequired': '请输入 API Key',
 
     // App actions
     'toast.archived': '已归档',
@@ -117,6 +122,11 @@ const translations = {
     'action.restore': '恢复',
     'action.confirmDelete': '删除（再点一次确认）',
     'action.confirmDeleteTitle': '确认删除？',
+
+    // Edit Modal
+    'editModal.title': '修改图片',
+    'editModal.cancel': '取消',
+    'editModal.submit': '开始修改',
   },
 
   en: {
@@ -141,6 +151,7 @@ const translations = {
     'input.noModel': 'No model selected',
     'input.drawModeBadge': 'Draw Mode',
     'input.editModeBadge': 'Edit Mode',
+    'input.exitEditMode': 'Exit Edit Mode ✕',
     'input.count': 'Count',
     'input.resolution': 'Resolution',
 
@@ -202,6 +213,8 @@ const translations = {
     'toast.removeModelFailed': 'Failed to remove model: {0}',
     'toast.editPromptRequired': 'Please enter a modification description',
     'toast.textStyleTodo': 'Text style feature coming soon',
+    'toast.modelIdRequired': 'Please enter a model ID',
+    'toast.apiKeyRequired': 'Please enter an API Key',
 
     'toast.archived': 'Archived',
     'toast.archiveFailed': 'Archive failed',
@@ -224,6 +237,11 @@ const translations = {
     'action.restore': 'Restore',
     'action.confirmDelete': 'Delete (click again to confirm)',
     'action.confirmDeleteTitle': 'Confirm delete?',
+
+    // Edit Modal
+    'editModal.title': 'Edit Image',
+    'editModal.cancel': 'Cancel',
+    'editModal.submit': 'Start Editing',
   },
 };
 
@@ -267,37 +285,6 @@ export async function setLang(lang) {
   document.body.classList.remove('lang-switching');
 }
 
-/**
- * 获取模型描述的翻译
- */
-export function translateModelDesc(desc) {
-  if (!desc) return desc;
-  const descTranslations = {
-    zh: {
-      '经典旗舰': '经典旗舰',
-      '增强版': '增强版',
-      '最新旗舰': '最新旗舰',
-      '标准版': '标准版',
-      '基础版': '基础版',
-      '极速版': '极速版',
-      'Wan 增强版': 'Wan 增强版',
-      'Wan 标准版': 'Wan 标准版',
-    },
-    en: {
-      '经典旗舰': 'Flagship',
-      '增强版': 'Enhanced',
-      '最新旗舰': 'Latest',
-      '标准版': 'Standard',
-      '基础版': 'Basic',
-      '极速版': 'Turbo',
-      'Wan 增强版': 'Wan En.',
-      'Wan 标准版': 'Wan Std.',
-    },
-  };
-  
-  const lang = getLang();
-  return descTranslations[lang]?.[desc] || desc;
-}
 
 /**
  * Apply translations to all DOM elements with [data-i18n] attributes

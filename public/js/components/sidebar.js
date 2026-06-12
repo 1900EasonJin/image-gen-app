@@ -1,7 +1,7 @@
 import state from '../state.js';
 import { fetchProviders, fetchCachedStatus, fetchProviderStatus } from '../api.js';
 import { $ } from '../utils/dom.js';
-import { t, getLang, translateModelDesc } from '../i18n.js';
+import { t, getLang } from '../i18n.js';
 
 const modelTrigger = $('#modelTrigger');
 const modelTriggerText = $('#modelTriggerText');
@@ -44,6 +44,38 @@ export async function init() {
   // 键盘 ESC 关闭
   document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape' && dropdownOpen) closeDropdown();
+  });
+
+  // 侧边栏宽度拖拽调整
+  const sidebarEl = document.getElementById('sidebar');
+  const sidebarHandle = document.getElementById('sidebarResizeHandle');
+  let sidebarResizing = false;
+  let sidebarStartX = 0;
+  let sidebarStartWidth = 0;
+
+  sidebarHandle.addEventListener('mousedown', (e) => {
+    sidebarResizing = true;
+    sidebarStartX = e.clientX;
+    sidebarStartWidth = sidebarEl.offsetWidth;
+    sidebarHandle.classList.add('active');
+    document.body.style.cursor = 'col-resize';
+    document.body.style.userSelect = 'none';
+    e.preventDefault();
+  });
+
+  document.addEventListener('mousemove', (e) => {
+    if (!sidebarResizing) return;
+    const delta = e.clientX - sidebarStartX;
+    const newWidth = Math.max(180, Math.min(400, sidebarStartWidth + delta));
+    sidebarEl.style.width = newWidth + 'px';
+  });
+
+  document.addEventListener('mouseup', () => {
+    if (!sidebarResizing) return;
+    sidebarResizing = false;
+    sidebarHandle.classList.remove('active');
+    document.body.style.cursor = '';
+    document.body.style.userSelect = '';
   });
 
   // 先用缓存秒开，后台再刷新
@@ -140,10 +172,11 @@ export async function refreshModelList() {
     if (models && models.length > 0) {
       hasModels = true;
 
-      // 分组标签
+      // 分组标签（使用 i18n 翻译）
       const groupLabel = document.createElement('div');
       groupLabel.className = 'model-group-label';
-      groupLabel.textContent = provider.name;
+      groupLabel.textContent = t('provider.' + provider.id);
+      groupLabel.dataset.i18n = 'provider.' + provider.id;
       modelDropdownList.appendChild(groupLabel);
 
       models.forEach((m) => {
@@ -159,13 +192,6 @@ export async function refreshModelList() {
         nameEl.className = 'model-option-name';
         nameEl.textContent = m.name;
         option.appendChild(nameEl);
-
-        if (m.desc) {
-          const descEl = document.createElement('span');
-          descEl.className = 'model-option-desc';
-          descEl.textContent = translateModelDesc(m.desc);
-          option.appendChild(descEl);
-        }
 
         option.addEventListener('click', () => {
           selectModel(provider.id, m.id, m.name);
@@ -193,7 +219,7 @@ export async function refreshModelList() {
   autoSelectDefaultModel();
 }
 
-/** 自动选择默认模型：仅火山 → Seedream 5.0，仅阿里 → Wan2.7 Pro，两者都有 → Seedream 5.0 */
+/** 自动选择默认模型：仅火山 → Seedream 5.0 Lite，仅阿里 → Wan2.7 Pro，两者都有 → Seedream 5.0 Lite */
 function autoSelectDefaultModel() {
   if (state.activeModelId) return; // 已选中就不覆盖
 
@@ -205,7 +231,7 @@ function autoSelectDefaultModel() {
 
   if (hasVolcengine) {
     targetProvider = 'volcengine';
-    targetModel = state.models.volcengine.find(m => m.id === 'doubao-seedream-5-0-260128')
+    targetModel = state.models.volcengine.find(m => m.id === 'doubao-seedream-5-0-260128' || m.id === 'doubao-seedream-5-0-lite-260128')
       || state.models.volcengine[0];
   } else if (hasAliyun) {
     targetProvider = 'aliyun';
@@ -231,6 +257,15 @@ function selectModel(providerId, modelId, modelName) {
     el.classList.toggle('active', el.dataset.providerId === providerId && el.dataset.modelId === modelId);
   });
 
+  // 查找完整模型信息（含 maxN / sizes）
+  const models = state.models[providerId] || [];
+  const model = models.find(m => m.id === modelId);
+
   closeDropdown();
-  window.dispatchEvent(new CustomEvent('modelSelected'));
+  window.dispatchEvent(new CustomEvent('modelSelected', {
+    detail: {
+      maxN: model?.maxN ?? 4,
+      sizes: model?.sizes || ['2048*2048'],
+    },
+  }));
 }
