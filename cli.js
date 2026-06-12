@@ -8,7 +8,7 @@
 import { program } from 'commander';
 import { generateCommand } from './cli-commands/generate.js';
 import { connectCommand } from './cli-commands/connect.js';
-import { configCommand } from './cli-commands/config.js';
+
 
 program
   .name('image-gen')
