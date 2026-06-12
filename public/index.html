@@ -120,6 +120,7 @@
           <!-- 底部输入区 -->
           <div class="input-area" id="inputArea">
             <div class="input-wrapper">
+              <div class="dialog-resize-handle" id="inputGrabHandle"></div>
               <textarea class="prompt-input" id="promptInput" data-i18n-placeholder="input.placeholder" placeholder="输入你的图片描述，文本绘制用&quote;双引号&quote;包裹" rows="2"></textarea>
               <div class="ref-image-preview hidden" id="refImagePreview">
                 <img id="refImageThumb" src="" alt="参考图" />
@@ -132,11 +133,6 @@
               <div class="input-toolbar-left">
                 <span class="model-badge" id="modelBadge" data-i18n="input.noModel">未选择模型</span>
                 <span class="mode-tag" id="modeTag" data-i18n="input.drawModeBadge">🎨 生图模式</span>
-                <label class="param-group">
-                  <span data-i18n="input.count">数量</span>
-                  <input type="range" id="countSlider" min="1" max="4" value="1" />
-                  <span id="countValue">1</span>
-                </label>
                 <label class="param-group">
                   <span data-i18n="input.resolution">分辨率</span>
                   <div class="size-selector" id="sizeSelector">

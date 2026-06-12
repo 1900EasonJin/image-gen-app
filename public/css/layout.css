@@ -338,8 +338,8 @@
 .resize-bar::after {
   content: '';
   position: absolute;
-  top: 0;
-  bottom: 0;
+  top: 45px;
+  bottom: 25px;
   left: 50%;
   transform: translateX(-50%);
   width: 1px;
@@ -352,20 +352,17 @@
   background: var(--accent);
 }
 
-/* 横向拖拽手柄（画布与输入区之间） */
+/* 右侧画廊拖拽手柄 — 线只覆盖卡片区域 */
+.gallery-resize-handle::after {
+  top: 10px;
+  bottom: 10px;
+}
+
+/* 画布与输入区之间的间隔（纯占位，无可见线） */
 .canvas-resize-handle {
   width: 100%;
   height: 6px;
   flex-shrink: 0;
-}
-
-.canvas-resize-handle::after {
-  top: 50%;
-  left: 0;
-  right: 0;
-  width: 100%;
-  height: 1px;
-  transform: translateY(-50%);
 }
 
 .gallery-header {
@@ -503,12 +500,40 @@
 /* ===== 底部输入区 ===== */
 .input-area {
   flex-shrink: 0;
-  padding: 10px 12px 15px;
+  padding: 1px 12px 15px;
   background: var(--bg-primary);
   border: 1px solid var(--border);
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-sm);
   transition: border-color 0.3s ease, box-shadow 0.3s ease, height 0.3s ease-out;
+}
+
+/* textarea 上沿大小调整抓手 */
+.dialog-resize-handle {
+  position: relative;
+  width: 100%;
+  height: 14px;
+  margin: 0 0 1px 0;
+  cursor: row-resize;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* 可视化细线 */
+.dialog-resize-handle::after {
+  content: '';
+  width: 80px;
+  height: 2px;
+  background: var(--border);
+  border-radius: 1px;
+  transition: background 0.2s ease, width 0.15s ease;
+}
+
+.dialog-resize-handle:hover::after,
+.dialog-resize-handle.active::after {
+  background: var(--accent);
+  width: 120px;
 }
 
 .input-area.edit-mode {
@@ -517,7 +542,7 @@
 
 .input-wrapper {
   position: relative;
-  margin-bottom: 8px;
+  margin-bottom: 6px;
 }
 
 textarea.prompt-input {

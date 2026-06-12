@@ -133,7 +133,52 @@ async function init() {
   inputInit();
   workAreaInit();
   galleryPanelInit();
-  // initCanvasResize(); // 滑块功能已取消
+  // initCanvasResize(); // 旧版画布拖拽（卡片间），已替换为 inputGrabHandle
+  initInputResize();
+
+  // textarea 上沿抓手拖拽调整输入框高度
+  function initInputResize() {
+    const handle = document.getElementById('inputGrabHandle');
+    const textarea = document.getElementById('promptInput');
+    if (!handle || !textarea) return;
+
+    const MIN_HEIGHT = 56;
+    const MAX_HEIGHT = 360;
+    let isResizing = false;
+    let startY = 0;
+    let startHeight = 0;
+
+    handle.addEventListener('mousedown', (e) => {
+      isResizing = true;
+      startY = e.clientY;
+      startHeight = textarea.offsetHeight;
+      handle.classList.add('active');
+      document.body.style.cursor = 'row-resize';
+      document.body.style.userSelect = 'none';
+      e.preventDefault();
+    });
+
+    document.addEventListener('mousemove', (e) => {
+      if (!isResizing) return;
+      const delta = startY - e.clientY;
+      let newHeight = startHeight + delta;
+      if (newHeight < MIN_HEIGHT) newHeight = MIN_HEIGHT;
+      if (newHeight > MAX_HEIGHT) newHeight = MAX_HEIGHT;
+      textarea.style.height = newHeight + 'px';
+    });
+
+    document.addEventListener('mouseup', () => {
+      if (!isResizing) return;
+      isResizing = false;
+      handle.classList.remove('active');
+      document.body.style.cursor = '';
+      document.body.style.userSelect = '';
+    });
+
+    handle.addEventListener('dblclick', () => {
+      textarea.style.height = '';
+    });
+  }
   initArchiveModal();
 
   // 并行初始化：sidebar（缓存秒开）和 sessions 同时加载

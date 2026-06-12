@@ -9,8 +9,6 @@ import { renderResult, setPrompt } from './result-grid.js';
 
 const promptInput = $('#promptInput');
 const generateBtn = $('#generateBtn');
-const countSlider = $('#countSlider');
-const countValue = $('#countValue');
 const sizeTrigger = $('#sizeTrigger');
 const sizeTriggerText = $('#sizeTriggerText');
 const sizeDropdown = $('#sizeDropdown');
@@ -47,11 +45,6 @@ export function init() {
     }
   });
 
-  // 数量滑块
-  countSlider.addEventListener('input', () => {
-    countValue.textContent = countSlider.value;
-  });
-
   // 分辨率上拉选择器
   let sizeDropdownOpen = false;
   sizeTrigger.addEventListener('click', (e) => {
@@ -85,22 +78,9 @@ export function init() {
     closeSizeDropdown();
   }
 
-  // 模型切换时更新滑块 max 和尺寸选项
+  // 模型切换时更新尺寸选项
   window.addEventListener('modelSelected', (e) => {
-    const { maxN, sizes } = e.detail || {};
-    const max = maxN || 4;
-    countSlider.max = max;
-    // 如果当前值超出新上限，钳制到上限
-    if (parseInt(countSlider.value) > max) {
-      countSlider.value = max;
-      countValue.textContent = max;
-    }
-
-    // maxN<=1：不支持多图，隐藏滑块
-    const countGroup = countSlider.closest('.param-group');
-    if (countGroup) {
-      countGroup.style.display = max <= 1 ? 'none' : '';
-    }
+    const { sizes } = e.detail || {};
 
     // 更新分辨率选项
     if (sizes && sizes.length > 0) {
@@ -201,7 +181,7 @@ export async function handleGenerate() {
       provider: state.activeProviderId,
       model: state.activeModelId,
       prompt,
-      n: parseInt(countSlider.value),
+      n: 1,
       size: currentSize,
       referenceImage: state.referenceImage || undefined,
       sessionId: state.currentSession?.id,
