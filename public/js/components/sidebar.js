@@ -1,0 +1,206 @@
+import state from '../state.js';
+import { fetchProviders, fetchCachedStatus, fetchProviderStatus } from '../api.js';
+import { $ } from '../utils/dom.js';
+import { t, getLang, translateModelDesc } from '../i18n.js';
+
+const modelTrigger = $('#modelTrigger');
+const modelTriggerText = $('#modelTriggerText');
+const modelDropdown = $('#modelDropdown');
+const modelDropdownList = $('#modelDropdownList');
+
+let dropdownOpen = false;
+
+// 初始化：拉取 Provider 列表，填充模型下拉
+export async function init() {
+  // 语言切换监听
+  window.addEventListener('languageChanged', () => {
+    if (!state.activeProviderId || !state.activeModelId) {
+      modelTriggerText.textContent = t('sidebar.selectModel');
+      modelTriggerText.classList.add('placeholder');
+    }
+    if (!state.activeProviderId || !state.activeModelId) {
+      $('#modelBadge').textContent = t('input.noModel');
+    }
+    // 重新渲染模型列表以应用新的语言翻译
+    refreshModelList();
+  });
+
+  // 设置按钮 → 打开设置弹窗
+  $('#openSettingsBtn').addEventListener('click', () => {
+    window.dispatchEvent(new CustomEvent('openSettings'));
+  });
+
+  // 切换下拉
+  modelTrigger.addEventListener('click', (e) => {
+    e.stopPropagation();
+    toggleDropdown();
+  });
+
+  // 点击外部关闭
+  document.addEventListener('click', () => {
+    if (dropdownOpen) closeDropdown();
+  });
+
+  // 键盘 ESC 关闭
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && dropdownOpen) closeDropdown();
+  });
+
+  // 先用缓存秒开，后台再刷新
+  await loadFromCache();
+  backgroundRefresh();
+}
+
+function toggleDropdown() {
+  if (dropdownOpen) {
+    closeDropdown();
+  } else {
+    openDropdown();
+  }
+}
+
+function openDropdown() {
+  dropdownOpen = true;
+  modelTrigger.classList.add('open');
+  modelDropdown.classList.remove('hidden');
+}
+
+function closeDropdown() {
+  dropdownOpen = false;
+  modelTrigger.classList.remove('open');
+  modelDropdown.classList.add('hidden');
+}
+
+/** 从缓存加载（<50ms，瞬间可用） */
+async function loadFromCache() {
+  try {
+    const result = await fetchCachedStatus();
+    if (result.success && result.providers) {
+      for (const p of result.providers) {
+        if (p.connected && p.models.length > 0) {
+          state.models[p.id] = p.models;
+          state.providers[p.id] = { connected: true, apiKey: p.maskedKey || '' };
+        }
+      }
+      await refreshModelList();
+    }
+  } catch {
+    // 缓存也不存在，静默
+  }
+}
+
+/** 后台静默刷新最新数据（不阻塞界面） */
+function backgroundRefresh() {
+  fetchProviderStatus().then((result) => {
+    if (result.success && result.providers) {
+      let changed = false;
+      for (const p of result.providers) {
+        const prevModels = state.models[p.id] || [];
+        const prevConnected = state.providers[p.id]?.connected || false;
+
+        if (p.connected && p.models.length > 0) {
+          if (!prevConnected || prevModels.length !== p.models.length || JSON.stringify(prevModels) !== JSON.stringify(p.models)) {
+            changed = true;
+          }
+          state.models[p.id] = p.models;
+          state.providers[p.id] = { connected: true, apiKey: p.maskedKey || '' };
+        } else if (!p.connected && prevConnected) {
+          changed = true;
+          delete state.models[p.id];
+          delete state.providers[p.id];
+          if (state.activeProviderId === p.id) {
+            state.activeProviderId = null;
+            state.activeModelId = null;
+            modelTriggerText.textContent = t('sidebar.selectModel');
+            modelTriggerText.classList.add('placeholder');
+            $('#modelBadge').textContent = t('input.noModel');
+          }
+        }
+      }
+      if (changed) refreshModelList();
+    }
+  }).catch(() => {});
+}
+
+// 刷新模型下拉列表（从已连接的 Provider 中聚合）
+export async function refreshModelList() {
+  const result = await fetchProviders();
+  if (!result.success) {
+    modelDropdownList.innerHTML = `<p class="text-hint">${t('settings.fetchFailed')}</p>`;
+    return;
+  }
+
+  modelDropdownList.innerHTML = '';
+  let hasModels = false;
+  let anyActive = false;
+
+  for (const provider of result.providers) {
+    const models = state.models[provider.id];
+    if (models && models.length > 0) {
+      hasModels = true;
+
+      // 分组标签
+      const groupLabel = document.createElement('div');
+      groupLabel.className = 'model-group-label';
+      groupLabel.textContent = provider.name;
+      modelDropdownList.appendChild(groupLabel);
+
+      models.forEach((m) => {
+        const isActive = state.activeProviderId === provider.id && state.activeModelId === m.id;
+        if (isActive) anyActive = true;
+
+        const option = document.createElement('div');
+        option.className = `model-option${isActive ? ' active' : ''}`;
+        option.dataset.providerId = provider.id;
+        option.dataset.modelId = m.id;
+
+        const nameEl = document.createElement('span');
+        nameEl.className = 'model-option-name';
+        nameEl.textContent = m.name;
+        option.appendChild(nameEl);
+
+        if (m.desc) {
+          const descEl = document.createElement('span');
+          descEl.className = 'model-option-desc';
+          descEl.textContent = translateModelDesc(m.desc);
+          option.appendChild(descEl);
+        }
+
+        option.addEventListener('click', () => {
+          selectModel(provider.id, m.id, m.name);
+        });
+
+        modelDropdownList.appendChild(option);
+      });
+    }
+  }
+
+  if (!hasModels) {
+    modelDropdownList.innerHTML = `<p class="text-hint" style="padding: 16px">${t('settings.noApiKey')}</p>`;
+  }
+
+  // 恢复选中状态显示
+  if (anyActive) {
+    const activeOption = modelDropdownList.querySelector('.model-option.active');
+    if (activeOption) {
+      modelTriggerText.textContent = activeOption.querySelector('span').textContent;
+      modelTriggerText.classList.remove('placeholder');
+    }
+  }
+}
+
+function selectModel(providerId, modelId, modelName) {
+  state.activeProviderId = providerId;
+  state.activeModelId = modelId;
+  modelTriggerText.textContent = modelName;
+  modelTriggerText.classList.remove('placeholder');
+  $('#modelBadge').textContent = modelName;
+
+  // 更新选中状态
+  modelDropdownList.querySelectorAll('.model-option').forEach(el => {
+    el.classList.toggle('active', el.dataset.providerId === providerId && el.dataset.modelId === modelId);
+  });
+
+  closeDropdown();
+  window.dispatchEvent(new CustomEvent('modelSelected'));
+}

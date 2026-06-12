@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Image Gen</title>
+  <link rel="stylesheet" href="/css/variables.css">
+  <link rel="stylesheet" href="/css/layout.css">
+  <link rel="stylesheet" href="/css/components.css">
+  <link rel="stylesheet" href="/css/lightbox.css">
+</head>
+<body>
+  <!-- 侧边栏 -->
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-header">
+      <span class="sidebar-brand" data-i18n="app.brand">Image Gen</span>
+      <button class="btn-icon settings-btn" id="openSettingsBtn" title="设置">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+      </button>
+    </div>
+
+    <div class="sidebar-section">
+      <h3 class="sidebar-label"><span data-i18n="sidebar.model">模型</span></h3>
+      <div class="model-selector" id="modelSelector">
+        <button class="model-trigger" id="modelTrigger">
+          <span class="model-trigger-text placeholder" id="modelTriggerText" data-i18n="sidebar.selectModel">选择模型...</span>
+          <svg class="model-trigger-arrow" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+        </button>
+        <div class="model-dropdown hidden" id="modelDropdown">
+          <div class="model-dropdown-list" id="modelDropdownList"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="sidebar-section sidebar-language">
+      <h3 class="sidebar-label"><span data-i18n="settings.language">语言</span></h3>
+      <div class="language-selector" id="languageSelector">
+        <button class="language-trigger" id="languageTrigger">
+          <span class="language-trigger-text" id="languageTriggerText">中文</span>
+          <svg class="language-trigger-arrow" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="6 9 12 15 18 9"/>
+          </svg>
+        </button>
+        <div class="language-dropdown hidden" id="languageDropdown">
+          <div class="language-dropdown-list">
+            <div class="language-option active" data-lang="zh">中文</div>
+            <div class="language-option" data-lang="en">English</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="sidebar-section sidebar-history">
+      <h3 class="sidebar-label"><span data-i18n="sidebar.history">历史</span> <span id="sessionCount" class="session-count"></span></h3>
+      <div class="session-list" id="sessionList">
+        <p class="text-hint" data-i18n="sidebar.noSession">暂无历史会话</p>
+      </div>
+      <button class="btn btn-secondary btn-archive-toggle" id="archiveToggleBtn">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 8v13H3V8"/><path d="M1 3h22v5H1z"/><path d="M10 12h4"/></svg>
+        <span data-i18n="sidebar.archive">归档记录</span>
+      </button>
+    </div>
+  </aside>
+
+  <!-- 主内容区 —— 工作区布局 -->
+  <main class="main-content">
+    <div class="work-area" id="workArea">
+      <!-- 顶部工具栏 -->
+      <header class="work-header" id="workHeader">
+        <div class="work-header-left">
+          <span class="status-tag" id="statusTag" data-i18n="work.noData">暂无数据</span>
+          <button class="btn btn-secondary new-canvas-btn" id="newSessionBtn" title="新建画布">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            <span data-i18n="work.newCanvas">新建画布</span>
+          </button>
+        </div>
+        <div class="work-header-center">
+          <div class="mode-toggle" id="modeToggle">
+            <div class="mode-indicator"></div>
+            <button class="mode-option active" data-mode="draw" data-i18n="app.mode.draw">文生图</button>
+            <button class="mode-option" data-mode="img2img" data-i18n="app.mode.img2img">图生图</button>
+          </div>
+        </div>
+        <div class="work-header-right"></div>
+      </header>
+
+      <!-- 中间主体：画布+输入区 | 右侧面板 -->
+      <div class="work-body">
+        <div class="canvas-column">
+          <!-- 中央画布 -->
+          <div class="canvas-area" id="canvasArea">
+            <!-- 生成中遮罩 -->
+            <div class="loading-overlay hidden" id="loadingOverlay">
+              <div class="loading-content">
+                <div class="loading-dots">
+                  <span></span><span></span><span></span>
+                </div>
+                <span>正在生成...</span>
+              </div>
+            </div>
+            <!-- 空状态占位 -->
+            <div class="canvas-placeholder" id="canvasPlaceholder">
+              <span class="canvas-placeholder-text" data-i18n="work.noImage">暂无图片</span>
+            </div>
+            <!-- 图片结果网格 -->
+            <div class="canvas-grid hidden" id="canvasGrid"></div>
+          </div>
+          <!-- 迭代链条 -->
+          <div class="iteration-chain hidden" id="iterationChain">
+            <h4 class="iteration-title" data-i18n="iteration.title">迭代历史</h4>
+            <div class="iteration-timeline" id="iterationTimeline"></div>
+          </div>
+
+          <!-- 底部输入区 -->
+          <div class="input-area" id="inputArea">
+            <div class="input-wrapper">
+              <div class="resize-handle" id="resizeHandle"></div>
+              <textarea class="prompt-input" id="promptInput" data-i18n-placeholder="input.placeholder" placeholder="输入你的图片描述，文本绘制用&quote;双引号&quote;包裹" rows="2"></textarea>
+              <div class="ref-image-preview hidden" id="refImagePreview">
+                <img id="refImageThumb" src="" alt="参考图" />
+                <button class="btn-icon btn-remove-ref" id="removeRefBtn" title="移除参考图">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                </button>
+              </div>
+            </div>
+            <div class="input-toolbar">
+              <div class="input-toolbar-left">
+                <span class="model-badge" id="modelBadge" data-i18n="input.noModel">未选择模型</span>
+                <label class="param-group">
+                  <span data-i18n="input.count">数量</span>
+                  <input type="range" id="countSlider" min="1" max="4" value="1" />
+                  <span id="countValue">1</span>
+                </label>
+                <label class="param-group">
+                  <span data-i18n="input.resolution">分辨率</span>
+                  <select id="sizeSelect" class="select select-xs">
+                    <option value="2K">2K</option>
+                    <option value="1K">1K</option>
+                  </select>
+                </label>
+              </div>
+              <div class="input-toolbar-right">
+                <button class="btn-icon btn-text-style" id="btnTextStyle" title="文本样式">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M4 7V4h16v3"/>
+                    <path d="M9 20h6"/>
+                    <path d="M12 4v16"/>
+                  </svg>
+                </button>
+                <button class="btn btn-send" id="generateBtn" title="发送">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <line x1="12" y1="19" x2="12" y2="5"/>
+                    <polyline points="5 12 12 5 19 12"/>
+                  </svg>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 右侧已生成图片面板 -->
+        <aside class="gallery-panel" id="galleryPanel">
+          <div class="gallery-header">
+            <span class="gallery-title" data-i18n="gallery.title">已生成图片</span>
+          </div>
+          <div class="gallery-list" id="galleryList">
+            <p class="gallery-empty" id="galleryEmpty" data-i18n="gallery.empty">暂无生成记录</p>
+          </div>
+        </aside>
+      </div>
+    </div>
+  </main>
+
+  <!-- 全屏预览 -->
+  <div class="lightbox" id="lightbox">
+    <div class="lightbox-overlay" id="lightboxOverlay"></div>
+    <div class="lightbox-content">
+      <img id="lightboxImage" src="" alt="" />
+      <div class="lightbox-prompt" id="lightboxPrompt"></div>
+      <button class="lightbox-close" id="lightboxClose">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+  </div>
+
+  <!-- Toast 通知 -->
+  <div class="toast-container" id="toastContainer"></div>
+
+  <!-- 设置弹窗 -->
+  <div class="modal hidden" id="settingsModal">
+    <div class="modal-overlay"></div>
+    <div class="modal-content modal-wide">
+      <div class="modal-header">
+        <h3>⚙ 设置</h3>
+        <button class="btn-icon" id="settingsModalClose">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+      </div>
+      <div class="settings-scroll" id="settingsProviders"></div>
+    </div>
+  </div>
+
+  <!-- 修改弹窗 -->
+  <div class="modal hidden" id="editModal">
+    <div class="modal-overlay"></div>
+    <div class="modal-content">
+      <h3>修改图片</h3>
+      <img class="modal-ref-image" id="editModalImage" src="" alt="参考图" />
+      <textarea class="prompt-input modal-prompt" id="editModalPrompt" placeholder="描述你想要修改的部分..." rows="3"></textarea>
+      <div class="modal-actions">
+        <button class="btn btn-secondary" id="editModalCancel">取消</button>
+        <button class="btn btn-primary" id="editModalSubmit">开始修改</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 归档记录弹窗 -->
+  <div class="modal hidden" id="archiveModal">
+    <div class="modal-overlay"></div>
+    <div class="modal-content modal-wide">
+      <div class="modal-header">
+        <h3 data-i18n="archive.title">📦 归档记录</h3>
+        <button class="btn-icon" id="archiveModalClose">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+      </div>
+      <div class="archive-list" id="archiveList">
+        <p class="text-hint" data-i18n="archive.empty">暂无归档记录</p>
+      </div>
+    </div>
+  </div>
+
+  <script type="module" src="/js/app.js"></script>
+</body>
+</html>
