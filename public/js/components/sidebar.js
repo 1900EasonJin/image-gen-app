@@ -48,6 +48,7 @@ export async function init() {
 
   // 先用缓存秒开，后台再刷新
   await loadFromCache();
+  autoSelectDefaultModel();
   backgroundRefresh();
 }
 
@@ -186,6 +187,35 @@ export async function refreshModelList() {
       modelTriggerText.textContent = activeOption.querySelector('span').textContent;
       modelTriggerText.classList.remove('placeholder');
     }
+  }
+
+  // 首次加载时自动选择默认模型
+  autoSelectDefaultModel();
+}
+
+/** 自动选择默认模型：仅火山 → Seedream 5.0，仅阿里 → Wan2.7 Pro，两者都有 → Seedream 5.0 */
+function autoSelectDefaultModel() {
+  if (state.activeModelId) return; // 已选中就不覆盖
+
+  const hasVolcengine = state.models['volcengine']?.length > 0;
+  const hasAliyun = state.models['aliyun']?.length > 0;
+
+  let targetProvider = null;
+  let targetModel = null;
+
+  if (hasVolcengine) {
+    targetProvider = 'volcengine';
+    targetModel = state.models.volcengine.find(m => m.id === 'doubao-seedream-5-0-260128')
+      || state.models.volcengine[0];
+  } else if (hasAliyun) {
+    targetProvider = 'aliyun';
+    targetModel = state.models.aliyun.find(m => m.id === 'wan2.7-image-pro')
+      || state.models.aliyun.find(m => m.id === 'qwen-image-2.0-pro')
+      || state.models.aliyun[0];
+  }
+
+  if (targetProvider && targetModel) {
+    selectModel(targetProvider, targetModel.id, targetModel.name);
   }
 }
 

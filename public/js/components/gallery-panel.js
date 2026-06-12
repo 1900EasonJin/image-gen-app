@@ -24,6 +24,7 @@ export function init() {
         id: img.id,
         localPath: img.localPath,
         dataUrl: img.localPath ? `/api/images/${img.id}` : null,
+        sourceUrl: img.sourceUrl || null,
       }));
       appendImages(images);
     }
@@ -41,9 +42,9 @@ function appendImages(images) {
     // 避免重复
     if (galleryItems.find((item) => item.id === img.id)) return;
 
-    galleryItems.push({ id: img.id, src });
+    galleryItems.push({ id: img.id, src, sourceUrl: img.sourceUrl || img.url || null });
 
-    const thumb = createThumbElement(img.id, src);
+    const thumb = createThumbElement(img.id, src, img.sourceUrl || img.url || null);
     galleryList.appendChild(thumb);
 
     // 滚动到底部
@@ -64,10 +65,11 @@ export function clearGallery() {
 }
 
 /** 创建单个缩略图元素 */
-function createThumbElement(id, src) {
+function createThumbElement(id, src, sourceUrl) {
   const thumb = document.createElement('div');
   thumb.className = 'gallery-thumb';
   thumb.dataset.id = id;
+  if (sourceUrl) thumb.dataset.sourceUrl = sourceUrl;
 
   const imgEl = document.createElement('img');
   imgEl.src = src;
@@ -78,9 +80,6 @@ function createThumbElement(id, src) {
   const overlay = document.createElement('div');
   overlay.className = 'gallery-thumb-overlay';
   overlay.innerHTML = `
-    <button class="btn-icon" title="${t('action.preview')}" data-action="preview">
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
-    </button>
     <button class="btn-icon" title="${t('action.edit')}" data-action="edit">
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
     </button>
@@ -89,7 +88,7 @@ function createThumbElement(id, src) {
   // 事件：点击缩略图 → 预览
   imgEl.addEventListener('click', () => {
     window.dispatchEvent(new CustomEvent('lightbox', {
-      detail: { src, prompt: state.lastPrompt || '' },
+      detail: { src, prompt: state.lastPrompt || '', id },
     }));
   });
 
@@ -98,13 +97,9 @@ function createThumbElement(id, src) {
     btn.addEventListener('click', (e) => {
       e.stopPropagation();
       const action = btn.dataset.action;
-      if (action === 'preview') {
-        window.dispatchEvent(new CustomEvent('lightbox', {
-          detail: { src, prompt: state.lastPrompt || '' },
-        }));
-      } else if (action === 'edit') {
+      if (action === 'edit') {
         window.dispatchEvent(new CustomEvent('editImage', {
-          detail: { src, id },
+          detail: { src, id, sourceUrl: thumb.dataset.sourceUrl || null },
         }));
       }
     });

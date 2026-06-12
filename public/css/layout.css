@@ -196,7 +196,6 @@
   flex-direction: column;
   overflow: hidden;
   min-height: 0;
-  gap: 10px;
 }
 
 /* 画布区域 */
@@ -365,6 +364,7 @@
   transition: border-color 0.2s ease, box-shadow 0.2s ease;
   position: relative;
   background: var(--bg-secondary);
+  flex-shrink: 0;
 }
 
 .gallery-thumb:hover {
@@ -434,11 +434,17 @@
 /* ===== 底部输入区 ===== */
 .input-area {
   flex-shrink: 0;
+  margin-top: 10px;
   padding: 14px 16px 16px;
   background: var(--bg-primary);
   border: 1px solid var(--border);
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-sm);
+  transition: border-color 0.3s ease, box-shadow 0.3s ease;
+}
+
+.input-area.edit-mode {
+  /* 仅保留动画效果，不留橙色边框 */
 }
 
 .input-wrapper {
@@ -539,14 +545,94 @@ textarea.prompt-input:focus {
   border-radius: 10px;
 }
 
-/* 迭代链条 */
+.mode-tag {
+  font-size: 11px;
+  color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+  padding: 3px 8px;
+  border-radius: 10px;
+  border: 1px solid color-mix(in srgb, var(--accent) 30%, transparent);
+  transition: all 0.2s ease;
+}
+
+.mode-tag.edit {
+  color: #d97706;
+  background: rgba(217, 119, 6, 0.12);
+  border-color: rgba(217, 119, 6, 0.3);
+  animation: modeBounce 0.5s ease;
+}
+
+@keyframes modeBounce {
+  0% { transform: scale(1); }
+  20% { transform: scale(1.25); }
+  40% { transform: scale(0.9); }
+  60% { transform: scale(1.1); }
+  80% { transform: scale(0.95); }
+  100% { transform: scale(1); }
+}
+
+/* 迭代链条 — 缓慢从中间向上下展开，画布和输入框随之平滑调整 */
 .iteration-chain {
   padding: 8px 12px 8px 18px;
+  margin-top: 10px;
   background: var(--bg-primary);
   border: 1px solid var(--border);
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-sm);
   flex-shrink: 0;
+  overflow: hidden;
+  max-height: 200px;
+  opacity: 1;
+  transition: max-height 0.45s cubic-bezier(0.4, 0, 0.2, 1),
+              opacity 0.35s cubic-bezier(0.4, 0, 0.2, 1),
+              padding 0.45s cubic-bezier(0.4, 0, 0.2, 1),
+              margin 0.45s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* 隐藏态：折叠到零，布局空间同步释放 */
+.iteration-chain.chain-hidden {
+  max-height: 0;
+  padding-top: 0;
+  padding-bottom: 0;
+  margin-top: 0;
+  margin-bottom: 0;
+  border-width: 0;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.iteration-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+.iteration-header .iteration-title {
+  margin: 0;
+}
+
+/* 退出修改模式按钮 — 圆形红色关闭按钮，更醒目 */
+.btn-exit-edit {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: var(--bg-hover);
+  color: var(--text-secondary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.btn-exit-edit:hover {
+  background: var(--danger);
+  color: #fff;
+  transform: scale(1.1);
+}
+
+.btn-exit-edit:active {
+  transform: scale(0.95);
 }
 
 /* ===== 语言切换过渡动画 ===== */

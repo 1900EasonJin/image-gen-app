@@ -74,6 +74,10 @@ export default {
       const imageUrl = referenceImage.dataUrl
         || `data:${referenceImage.mimeType || 'image/png'};base64,${referenceImage.base64}`;
       messages[0].content.unshift({ image: imageUrl });
+      const fp = imageUrl.includes('base64,') ? imageUrl.substring(imageUrl.indexOf('base64,') + 7, imageUrl.indexOf('base64,') + 27) : imageUrl.substring(0, 20);
+      console.log(`[Qwen-img2img] model=${model} prompt="${prompt.substring(0, 50)}" refFingerprint=${fp}... refSize≈${(imageUrl.length / 1024).toFixed(0)}KB`);
+    } else {
+      console.log(`[Qwen-text2img] model=${model} prompt="${prompt.substring(0, 50)}" (无参考图)`);
     }
 
     const resp = await fetch('https://dashscope.aliyuncs.com/api/v1/services/aigc/multimodal-generation/generation', {
@@ -98,7 +102,7 @@ export default {
     }
 
     const data = await resp.json();
-    return this._parseQwenResult(data);
+    return this._parseImageResult(data);
   },
 
   async _pollQwenTask(taskId, apiKey, maxRetries = 60) {
@@ -115,7 +119,7 @@ export default {
       const data = await resp.json();
 
       if (data.output?.task_status === 'SUCCEEDED') {
-        return this._parseQwenResult(data);
+        return this._parseImageResult(data);
       }
 
       if (data.output?.task_status === 'FAILED') {
@@ -126,28 +130,62 @@ export default {
     throw new Error('阿里云生图超时');
   },
 
-  _parseQwenResult(data) {
-    const results = data.output?.results || data.output?.result_urls || [];
+  /**
+   * 通用图像结果解析 — 正确遍历 choices[] → message.content[] → { image } 嵌套
+   * 适配 Qwen-Image 和 Wan2.7 同步调用的返回格式
+   */
+  _parseImageResult(data) {
+    let imageUrls = [];
 
-    const images = Array.isArray(results)
-      ? results.map((r, i) => ({
-          id: `img_${Date.now()}_${i}`,
-          url: r.url || r,
-          dataUrl: r.b64_image ? `data:image/png;base64,${r.b64_image}` : null,
-          index: i,
-        }))
-      : [{
-          id: `img_${Date.now()}_0`,
-          url: data.output?.results?.[0]?.url || data.output?.result_url || null,
-          dataUrl: null,
-          index: 0,
-        }];
+    // 主格式：output.choices[] → message.content[] → { image, type: "image" }
+    // Qwen/Wan2.7 同步调用都走这个格式
+    if (data.output?.choices && Array.isArray(data.output.choices)) {
+      for (const choice of data.output.choices) {
+        const contents = choice.message?.content || [];
+        for (const item of contents) {
+          if (item.image && typeof item.image === 'string' && item.image.startsWith('http')) {
+            imageUrls.push(item.image);
+          }
+        }
+      }
+    }
 
-    return { success: true, images, usage: data.usage || null };
+    // 兜底兼容：旧格式 output.results[]（异步任务轮询结果等）
+    if (imageUrls.length === 0 && data.output?.results && Array.isArray(data.output.results)) {
+      imageUrls = data.output.results
+        .map(r => r.url || r.image || r.result_url)
+        .filter(u => typeof u === 'string' && u.startsWith('http'));
+    }
+    if (imageUrls.length === 0 && data.output?.result_urls && Array.isArray(data.output.result_urls)) {
+      imageUrls = data.output.result_urls.filter(u => typeof u === 'string' && u.startsWith('http'));
+    }
+    if (imageUrls.length === 0 && data.output?.result_url && typeof data.output.result_url === 'string') {
+      imageUrls = [data.output.result_url];
+    }
+    if (imageUrls.length === 0 && data.output?.image && typeof data.output.image === 'string') {
+      imageUrls = [data.output.image];
+    }
+
+    const images = imageUrls.map((url, i) => ({
+      id: `img_${Date.now()}_${i}`,
+      url,
+      dataUrl: null,   // 百炼同步调用只返回 OSS 临时 URL，不含 base64
+      index: i,
+    }));
+
+    // 调试信息
+    const debug = {
+      outputKeys: data.output ? Object.keys(data.output) : [],
+      choicesCount: data.output?.choices?.length || 0,
+      imagesCount: images.length,
+      rawOutput: JSON.stringify(data.output || {}).substring(0, 500),
+    };
+
+    return { success: true, images, usage: data.usage || null, debug };
   },
 
   // ——— Wan 系列生图 ———
-  // Wan 2.7 使用 image-generation 端点，messages 格式，size 用 "2K"
+  // Wan 2.7 同步调用使用 multimodal-generation 端点（与 Qwen 相同），size 用 "2K"/"1K"/"4K" 缩写
   async _generateWan({ model, prompt, n, size, apiKey, referenceImage }) {
     const messages = [{ role: 'user', content: [{ text: prompt }] }];
 
@@ -155,11 +193,14 @@ export default {
       const imageUrl = referenceImage.dataUrl
         || `data:${referenceImage.mimeType || 'image/png'};base64,${referenceImage.base64}`;
       messages[0].content.unshift({ image: imageUrl });
+      console.log(`[Wan-img2img] model=${model} prompt="${prompt.substring(0, 50)}" refFingerprint=${imageUrl.substring(imageUrl.indexOf('base64,') + 7, imageUrl.indexOf('base64,') + 27)}...`);
+    } else {
+      console.log(`[Wan-text2img] model=${model} prompt="${prompt.substring(0, 50)}" (无参考图)`);
     }
 
-    // Wan 用 2K/1K 格式，不用 2048*2048
-    const wanSize = (!size || size === '2048*2048') ? '2K'
-      : (size === '1024*1024' ? '1K' : size);
+    // Wan 用 "2K"/"1K"/"4K" 缩写格式，将宽*高格式自动转换
+    const sizeMap = { '2048*2048': '2K', '1024*1024': '1K', '4096*4096': '4K' };
+    const wanSize = sizeMap[size] || size || '2K';
 
     const body = {
       model,
@@ -167,10 +208,14 @@ export default {
       parameters: {
         n: n || 1,
         size: wanSize,
+        thinking_mode: true,   // Wan2.7 默认开启思考模式，提升画质
+        watermark: false,
       },
     };
 
-    const resp = await fetch('https://dashscope.aliyuncs.com/api/v1/services/aigc/image-generation/generation', {
+    // ⚠️ 关键修复：Wan2.7 同步调用必须用 multimodal-generation 端点
+    // image-generation 是异步端点，不带 X-DashScope-Async: enable 会返回 403
+    const resp = await fetch('https://dashscope.aliyuncs.com/api/v1/services/aigc/multimodal-generation/generation', {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${apiKey}`,
@@ -185,8 +230,6 @@ export default {
     }
 
     const data = await resp.json();
-
-    // Wan 同步返回，格式与 Qwen 相同
-    return this._parseQwenResult(data);
+    return this._parseImageResult(data);
   },
 };

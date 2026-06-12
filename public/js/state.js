@@ -18,6 +18,8 @@ const state = {
   lastPrompt: '',
   // 工作区模式：draw | edit
   workMode: 'draw',
+  // 编辑链（前端维护，用于迭代历史展示）
+  editChain: [],
 };
 
 export default state;

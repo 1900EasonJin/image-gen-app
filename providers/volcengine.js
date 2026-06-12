@@ -86,6 +86,7 @@ export default {
         n: n || 1,
         size: size || '2K',
         response_format: 'b64_json',
+        watermark: false,
       }),
     });
 
@@ -118,6 +119,7 @@ export default {
       n: n || 1,
       size: size || '2K',
       response_format: 'b64_json',
+      watermark: false,
     };
 
     // referenceImage 是结构化对象 { base64, mimeType, dataUrl }

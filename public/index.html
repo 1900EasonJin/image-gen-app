@@ -106,8 +106,13 @@
             <div class="canvas-grid hidden" id="canvasGrid"></div>
           </div>
           <!-- 迭代链条 -->
-          <div class="iteration-chain hidden" id="iterationChain">
-            <h4 class="iteration-title" data-i18n="iteration.title">迭代历史</h4>
+          <div class="iteration-chain chain-hidden" id="iterationChain">
+            <div class="iteration-header">
+              <h4 class="iteration-title" data-i18n="iteration.title">迭代历史</h4>
+              <button class="btn-icon btn-exit-edit" id="exitEditBtn" title="退出修改模式">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+              </button>
+            </div>
             <div class="iteration-timeline" id="iterationTimeline"></div>
           </div>
 
@@ -126,6 +131,7 @@
             <div class="input-toolbar">
               <div class="input-toolbar-left">
                 <span class="model-badge" id="modelBadge" data-i18n="input.noModel">未选择模型</span>
+                <span class="mode-tag" id="modeTag">🎨 生图模式</span>
                 <label class="param-group">
                   <span data-i18n="input.count">数量</span>
                   <input type="range" id="countSlider" min="1" max="4" value="1" />

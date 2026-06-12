@@ -3,6 +3,9 @@ import { generateImage } from '../api.js';
 import { showToast } from '../utils/toast.js';
 import { $ } from '../utils/dom.js';
 import { t } from '../i18n.js';
+import { renderEditChain, clearChain } from './iteration-chain.js';
+import { appendToGallery } from './gallery-panel.js';
+import { renderResult, setPrompt } from './result-grid.js';
 
 const promptInput = $('#promptInput');
 const generateBtn = $('#generateBtn');
@@ -107,6 +110,11 @@ export function init() {
   $('#btnTextStyle')?.addEventListener('click', () => {
     showToast(t('toast.textStyleTodo'), 'info');
   });
+
+  // 迭代链条退出修改模式
+  $('#exitEditBtn')?.addEventListener('click', () => {
+    exitEditMode();
+  });
 }
 
 export async function handleGenerate() {
@@ -129,6 +137,10 @@ export async function handleGenerate() {
   if (canvasPlaceholder) canvasPlaceholder.classList.add('hidden');
   loadingOverlay.classList.remove('hidden');
 
+  // debug: 打印本次生图参数
+  const hasRef = !!state.referenceImage;
+  console.log(`[handleGenerate] prompt="${prompt}" hasRef=${hasRef} refLen=${hasRef ? state.referenceImage.length : 'N/A'} sessionId=${state.currentSession?.id || 'NEW'}`);
+
   try {
     const result = await generateImage({
       provider: state.activeProviderId,
@@ -145,6 +157,31 @@ export async function handleGenerate() {
       const imgCount = result.images?.length || 0;
       showToast(imgCount > 0 ? t('toast.generateSuccess', imgCount) : t('toast.generateSuccessSingle'), 'success');
 
+      // 显示调试信息（如果有）
+      if (result.debug && imgCount === 0) {
+        const dbg = result.debug;
+        console.log('[Qwen Debug]', dbg);
+        showToast(`调试: output keys=[${dbg.outputKeys.join(',')}], results=${dbg.resultsCount}, raw=${dbg.rawOutput.substring(0, 200)}`, 'info');
+      }
+
+      promptInput.value = '';
+
+      // 编辑模式：追加到编辑链，并更新参考图为最新结果（连续迭代）
+      if (state.referenceImage && result.images?.length > 0) {
+        const firstImg = result.images[0];
+        const newSrc = firstImg.dataUrl || `/api/images/${firstImg.id}`;
+        result.images.forEach((img, idx) => {
+          state.editChain.push({
+            src: img.dataUrl || `/api/images/${img.id}`,
+            id: img.id,
+            label: t('iteration.version', state.editChain.length),
+          });
+        });
+        // 更新参考图为最新生成结果，下次修改基于最新版本
+        state.referenceImage = newSrc;
+        renderEditChain(state.editChain);
+      }
+
       window.dispatchEvent(new CustomEvent('imagesGenerated', { detail: result }));
 
       if (result.sessionId) {
@@ -152,7 +189,10 @@ export async function handleGenerate() {
       }
       state.currentSession = result.session || { id: result.sessionId };
 
-      exitEditMode();
+      // 生图模式生成后退出编辑态（确保 mode tag 正确）
+      if (!state.referenceImage) {
+        exitEditMode();
+      }
     } else {
       showToast(t('toast.generateFailed', result.error), 'error');
     }
@@ -167,20 +207,40 @@ export async function handleGenerate() {
 }
 
 // 设置修改模式
-export function enterEditMode(referenceImage) {
+export function enterEditMode(referenceImage, src, id) {
   state.referenceImage = referenceImage;
-  if (referenceImage) {
-    refImageThumb.src = referenceImage.startsWith('data:')
-      ? referenceImage
-      : referenceImage;
-    refImagePreview.classList.remove('hidden');
-  }
-  promptInput.focus();
+  promptInput.value = '';
   promptInput.placeholder = t('input.editPlaceholder');
+  const modeTag = document.getElementById('modeTag');
+  const inputArea = document.getElementById('inputArea');
+  if (modeTag) {
+    modeTag.textContent = '🖊 ' + t('input.editModeBadge');
+    modeTag.classList.remove('edit');
+    void modeTag.offsetWidth;
+    modeTag.classList.add('edit');
+  }
+  if (inputArea) {
+    inputArea.classList.add('edit-mode');
+  }
+  // 初始化编辑链：原图为被修改的图片
+  state.editChain = [{ src, id, label: t('iteration.original') }];
+  renderEditChain(state.editChain);
+  promptInput.focus();
 }
 
 export function exitEditMode() {
   state.referenceImage = null;
+  state.editChain = [];
   refImagePreview.classList.add('hidden');
   promptInput.placeholder = t('input.placeholder');
+  const modeTag = document.getElementById('modeTag');
+  const inputArea = document.getElementById('inputArea');
+  if (modeTag) {
+    modeTag.textContent = '🎨 ' + t('input.drawModeBadge');
+    modeTag.classList.remove('edit');
+  }
+  if (inputArea) {
+    inputArea.classList.remove('edit-mode');
+  }
+  clearChain();
 }

@@ -5,7 +5,7 @@ import { renderResult, setPrompt, showEmpty } from './components/result-grid.js'
 import { init as lightboxInit, open as openLightbox } from './components/lightbox.js';
 import { init as workAreaInit } from './components/work-area.js';
 import { init as galleryPanelInit } from './components/gallery-panel.js';
-import { renderChain, clearChain } from './components/iteration-chain.js';
+import { clearChain } from './components/iteration-chain.js';
 import { clearGallery, appendToGallery } from './components/gallery-panel.js';
 import { init as languageInit } from './components/language.js';
 import { showToast } from './utils/toast.js';
@@ -57,31 +57,33 @@ async function init() {
     setPrompt(state.lastPrompt || '');
     renderResult(result.images);
 
-    if (result.session?.iterations) {
-      renderChain(result.session.iterations);
-    }
-
     // 刷新历史列表
     loadSessions();
   });
 
   // Lightbox
   window.addEventListener('lightbox', (e) => {
-    const { src, prompt } = e.detail;
+    const { src, prompt, id } = e.detail;
     openLightbox(src, prompt);
+    // 如果在编辑模式，高亮迭代链中对应节点
+    if (id && state.editChain?.length > 0) {
+      const nodes = document.querySelectorAll('.iteration-node');
+      const idx = state.editChain.findIndex(item => item.id === id);
+      if (idx >= 0) {
+        nodes.forEach((n, i) => n.classList.toggle('active', i === idx));
+      }
+    }
   });
 
   // 修改图片
   window.addEventListener('editImage', (e) => {
-    const { src, id } = e.detail;
-    const editModal = document.getElementById('editModal');
-    const editModalImage = document.getElementById('editModalImage');
-    const editModalPrompt = document.getElementById('editModalPrompt');
+    const { src, id, sourceUrl } = e.detail;
+    // 优先使用 OSS URL（百炼可直接读取），避免 base64 转码损耗
+    const referenceSrc = sourceUrl || src;
+    const fingerprint = referenceSrc.substring(0, 50) + (referenceSrc.length > 50 ? '...' : '');
+    console.log(`[editImage] id=${id} type=${sourceUrl ? 'OSS_URL' : 'base64/local'} ref=${fingerprint} len=${referenceSrc.length}`);
 
-    editModalImage.src = src;
-    editModalPrompt.value = '';
-    editModal.classList.remove('hidden');
-    enterEditMode(src);
+    enterEditMode(referenceSrc, src, id);
   });
 
   // 迭代切换
@@ -92,6 +94,7 @@ async function init() {
         id: img.id,
         localPath: img.localPath,
         dataUrl: img.localPath ? `/api/images/${img.id}` : null,
+        sourceUrl: img.sourceUrl || null,
       }));
       renderResult(images);
     }
@@ -399,6 +402,9 @@ async function loadSessionDetail(sessionId) {
     const session = data.session;
     state.currentSession = session;
 
+    // 浏览历史时确保退出编辑模式（生图模式）
+    exitEditMode();
+
     // 恢复输入框 prompt
     const promptInput = document.getElementById('promptInput');
     promptInput.value = session.prompt || '';
@@ -414,6 +420,7 @@ async function loadSessionDetail(sessionId) {
             id: img.id,
             dataUrl: `/api/images/${img.id}`,
             localPath: img.localPath,
+            sourceUrl: img.sourceUrl || null,
           };
         }
         return { id: img.id, dataUrl: null };
@@ -421,7 +428,8 @@ async function loadSessionDetail(sessionId) {
 
       setPrompt(session.prompt || '');
       renderResult(latestImages);
-      renderChain(iterations);
+      // 浏览历史时默认生图模式，不显示迭代链
+      clearChain();
 
       // 画廊：收集所有迭代的图片
       clearGallery();
@@ -433,6 +441,7 @@ async function loadSessionDetail(sessionId) {
               id: img.id,
               dataUrl: `/api/images/${img.id}`,
               localPath: img.localPath,
+              sourceUrl: img.sourceUrl || null,
             });
           }
         }

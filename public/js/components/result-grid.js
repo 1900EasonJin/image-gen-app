@@ -18,7 +18,7 @@ export function showEmpty() {
   canvasPlaceholder.classList.remove('hidden');
 
   // 同时隐藏迭代链条
-  document.getElementById('iterationChain')?.classList.add('hidden');
+  document.getElementById('iterationChain')?.classList.add('chain-hidden');
 
   // 更新顶部状态标签
   const statusTag = document.getElementById('statusTag');
@@ -64,9 +64,6 @@ export function renderResult(images) {
     const overlay = document.createElement('div');
     overlay.className = 'hover-overlay';
     overlay.innerHTML = `
-      <button class="btn-icon" title="${t('action.preview')}" data-action="preview">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
-      </button>
       <button class="btn-icon" title="${t('action.download')}" data-action="download">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
       </button>
@@ -81,6 +78,13 @@ export function renderResult(images) {
         const action = btn.dataset.action;
         handleAction(action, img, imgSrc);
       });
+    });
+
+    // 点击图片 → 预览
+    imgEl.addEventListener('click', () => {
+      window.dispatchEvent(new CustomEvent('lightbox', {
+        detail: { src: imgSrc, prompt: currentPrompt, id: img.id },
+      }));
     });
 
     card.appendChild(imgEl);
@@ -108,7 +112,7 @@ function handleAction(action, img, imgSrc) {
       break;
     case 'edit':
       window.dispatchEvent(new CustomEvent('editImage', {
-        detail: { src: imgSrc, id: img.id },
+        detail: { src: imgSrc, id: img.id, sourceUrl: img.sourceUrl || img.url || null },
       }));
       break;
   }

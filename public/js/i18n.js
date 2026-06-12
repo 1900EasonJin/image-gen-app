@@ -25,6 +25,8 @@ const translations = {
     'input.placeholder': '输入你的图片描述，文本绘制用"双引号"包裹',
     'input.editPlaceholder': '描述你想要修改的部分...',
     'input.noModel': '未选择模型',
+    'input.drawModeBadge': '生图模式',
+    'input.editModeBadge': '修改模式',
     'input.count': '数量',
     'input.resolution': '分辨率',
 
@@ -137,6 +139,8 @@ const translations = {
     'input.placeholder': 'Describe the image you want to generate...',
     'input.editPlaceholder': 'Describe what you want to modify...',
     'input.noModel': 'No model selected',
+    'input.drawModeBadge': 'Draw Mode',
+    'input.editModeBadge': 'Edit Mode',
     'input.count': 'Count',
     'input.resolution': 'Resolution',
 
