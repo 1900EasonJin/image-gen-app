@@ -1,9 +1,9 @@
 import state from '../state.js';
-import { fetchProviders, connectProvider, addCustomModel, removeCustomModel } from '../api.js';
+import { fetchProviders, connectProvider, addCustomModel, removeCustomModel, getCacheStats, clearImageCache, openCacheDir } from '../api.js';
 import { showToast } from '../utils/toast.js';
 import { $ } from '../utils/dom.js';
 import { refreshModelList } from './sidebar.js';
-import { t, setLang } from '../i18n.js';
+import { t } from '../i18n.js';
 
 const settingsModal = $('#settingsModal');
 const settingsProviders = $('#settingsProviders');
@@ -37,6 +37,52 @@ async function render() {
   }
 
   settingsProviders.innerHTML = '';
+
+  // ===== 缓存管理卡片 =====
+  const cacheCard = document.createElement('div');
+  cacheCard.className = 'settings-provider-card';
+  cacheCard.innerHTML = `
+    <div class="provider-header">
+      <div class="provider-name">
+        <span>🗂 ${t('settings.cacheTitle')}</span>
+        <span class="provider-status-text" id="cacheStatsText">${t('settings.cacheLoading')}</span>
+      </div>
+    </div>
+    <div class="settings-key-row">
+      <button class="btn btn-secondary btn-sm" id="openCacheDirBtn">${t('settings.openCacheDir')}</button>
+      <button class="btn btn-secondary btn-sm" id="clearCacheBtn">${t('settings.clearCache')}</button>
+    </div>
+  `;
+  settingsProviders.appendChild(cacheCard);
+
+  // 绑定打开文件夹按钮
+  cacheCard.querySelector('#openCacheDirBtn').addEventListener('click', async () => {
+    await openCacheDir();
+  });
+
+  // 绑定清缓存按钮
+  cacheCard.querySelector('#clearCacheBtn').addEventListener('click', async () => {
+    const btn = cacheCard.querySelector('#clearCacheBtn');
+    btn.disabled = true;
+    btn.textContent = t('settings.clearing');
+    const res = await clearImageCache();
+    if (res.success) {
+      const msg = res.kept > 0
+        ? t('settings.cacheClearedWithKept', res.deleted, res.kept)
+        : t('settings.cacheCleared', res.deleted);
+      showToast(msg, 'success');
+      loadCacheStats();
+    } else {
+      showToast(t('settings.cacheClearFailed'), 'error');
+    }
+    btn.disabled = false;
+    btn.textContent = t('settings.clearCache');
+  });
+
+  // 异步加载缓存统计
+  loadCacheStats();
+
+  // ===== Provider 卡片 =====
 
   result.providers.forEach((provider) => {
     const connected = state.providers[provider.id]?.connected || false;
@@ -139,8 +185,22 @@ async function render() {
     settingsProviders.appendChild(card);
   });
 
-  // 绑定所有按钮事件
+  // ===== 绑定所有按钮事件 =====
   bindAllButtons();
+}
+
+async function loadCacheStats() {
+  const el = document.getElementById('cacheStatsText');
+  if (!el) return;
+  try {
+    const stats = await getCacheStats();
+    if (stats.success) {
+      const mb = (stats.sizeBytes / 1024 / 1024).toFixed(1);
+      el.textContent = t('settings.cacheStats', stats.count, mb);
+    }
+  } catch {
+    el.textContent = '';
+  }
 }
 
 function bindAllButtons() {

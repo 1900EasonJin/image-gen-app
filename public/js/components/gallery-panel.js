@@ -1,5 +1,5 @@
-import state from '../state.js';
 import { t } from '../i18n.js';
+import { crossfadeCanvas } from '../utils/crossfade.js';
 import { renderResult } from './result-grid.js';
 
 const galleryList = document.getElementById('galleryList');
@@ -117,86 +117,24 @@ function createThumbElement(id, src, sourceUrl) {
     </button>
   `;
 
+  const singleImage = [{ id, dataUrl: src, url: sourceUrl || null, sourceUrl: sourceUrl || null }];
+
   // 事件：点击缩略图 → 淡出当前画布，以单图模式淡入显示
   imgEl.addEventListener('click', () => {
-    const canvasGrid = document.getElementById('canvasGrid');
-    const currentCards = canvasGrid.querySelectorAll('.image-card');
-    
-    if (currentCards.length > 0) {
-      // 有图片时，先淡出再渲染新图
-      currentCards.forEach((c) => {
-        c.style.transition = 'opacity 0.4s ease, transform 0.4s ease';
-        c.style.opacity = '0';
-        c.style.transform = 'scale(0.92)';
-      });
-      
-      setTimeout(() => {
-        renderResult([{
-          id,
-          dataUrl: src,
-          url: sourceUrl || null,
-          sourceUrl: sourceUrl || null,
-        }]);
-      }, 420);
-    } else {
-      // 画布为空，直接渲染
-      renderResult([{
-        id,
-        dataUrl: src,
-        url: sourceUrl || null,
-        sourceUrl: sourceUrl || null,
-      }]);
-    }
+    crossfadeCanvas(renderResult, singleImage);
   });
 
   // 事件：点击修改按钮 → 淡出当前画布，以单图模式淡入新图，再进入编辑模式
   overlay.querySelectorAll('.btn-icon').forEach((btn) => {
     btn.addEventListener('click', (e) => {
       e.stopPropagation();
-      const action = btn.dataset.action;
-      if (action === 'edit') {
-        const canvasGrid = document.getElementById('canvasGrid');
-        const currentCards = canvasGrid.querySelectorAll('.image-card');
-        
-        if (currentCards.length > 0) {
-          // 淡出所有当前卡片
-          currentCards.forEach((c) => {
-            c.style.transition = 'opacity 0.4s ease, transform 0.4s ease';
-            c.style.opacity = '0';
-            c.style.transform = 'scale(0.92)';
-          });
-          
-          // 420ms后淡入新图并进入编辑模式
-          setTimeout(() => {
-            renderResult([{
-              id,
-              dataUrl: src,
-              url: sourceUrl || null,
-              sourceUrl: sourceUrl || null,
-            }]);
-            
-            // 再等一帧后触发编辑事件
-            requestAnimationFrame(() => {
-              window.dispatchEvent(new CustomEvent('editImage', {
-                detail: { src, id, sourceUrl: thumb.dataset.sourceUrl || null },
-              }));
-            });
-          }, 420);
-        } else {
-          // 画布为空，直接渲染并进入编辑模式
-          renderResult([{
-            id,
-            dataUrl: src,
-            url: sourceUrl || null,
-            sourceUrl: sourceUrl || null,
-          }]);
-          
-          requestAnimationFrame(() => {
-            window.dispatchEvent(new CustomEvent('editImage', {
-              detail: { src, id, sourceUrl: thumb.dataset.sourceUrl || null },
-            }));
-          });
-        }
+      if (btn.dataset.action === 'edit') {
+        crossfadeCanvas(renderResult, singleImage);
+        setTimeout(() => {
+          window.dispatchEvent(new CustomEvent('editImage', {
+            detail: { src, id, sourceUrl: thumb.dataset.sourceUrl || null },
+          }));
+        }, 450);
       }
     });
   });

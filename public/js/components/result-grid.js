@@ -1,6 +1,6 @@
 import state from '../state.js';
-import { $ } from '../utils/dom.js';
 import { t } from '../i18n.js';
+import { crossfadeCanvas } from '../utils/crossfade.js';
 
 const canvasGrid = document.getElementById('canvasGrid');
 const canvasPlaceholder = document.getElementById('canvasPlaceholder');
@@ -150,26 +150,12 @@ function editWithAnimation(img, imgSrc, card) {
     return;
   }
 
-  // 记录选中图的完整数据
-  const selectedImg = { ...img };
-
-  // 第一步：所有图一起淡出
-  allCards.forEach((c) => {
-    c.style.transition = 'opacity 0.4s ease, transform 0.4s ease';
-    c.style.opacity = '0';
-    c.style.transform = 'scale(0.92)';
-  });
-
-  // 第二步：淡出完成后，用单图重新渲染 + 触发编辑
+  crossfadeCanvas(renderResult, [{ id: img.id, dataUrl: img.dataUrl, url: img.url, sourceUrl: img.sourceUrl }]);
   setTimeout(() => {
-    renderResult([selectedImg]);
-    // 稍等一帧确保 DOM 已更新，再进入编辑模式
-    requestAnimationFrame(() => {
-      window.dispatchEvent(new CustomEvent('editImage', {
-        detail: { src: imgSrc, id: img.id, sourceUrl },
-      }));
-    });
-  }, 420);
+    window.dispatchEvent(new CustomEvent('editImage', {
+      detail: { src: imgSrc, id: img.id, sourceUrl },
+    }));
+  }, 450);
 }
 
 function downloadImage(img, imgSrc) {

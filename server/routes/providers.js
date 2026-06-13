@@ -4,6 +4,18 @@ import { saveApiKey, getApiKey, maskApiKey as maskKey, getCustomModels, addCusto
 
 const router = Router();
 
+/** 自定义模型变更后刷新 Provider 缓存 */
+async function refreshProviderCache(id) {
+  const cache = getProviderCache();
+  if (!cache[id]?.connected) return;
+  const apiKey = await getApiKey(id);
+  if (!apiKey) return;
+  const result = await connectProvider(id, apiKey);
+  if (result.success) {
+    updateProviderCacheEntry(id, { connected: true, models: result.models, maskedKey: maskKey(apiKey) });
+  }
+}
+
 // 获取所有可用 Provider 列表
 router.get('/', (_req, res) => {
   const providers = getProviders();
@@ -134,21 +146,7 @@ router.post('/:id/custom-models', async (req, res) => {
       name: modelName || modelId,
     });
 
-    // 同步更新缓存中的模型列表
-    const cache = getProviderCache();
-    if (cache[id]?.connected) {
-      const apiKey = await getApiKey(id);
-      if (apiKey) {
-        const result = await connectProvider(id, apiKey);
-        if (result.success) {
-          updateProviderCacheEntry(id, {
-            connected: true,
-            models: result.models,
-            maskedKey: maskKey(apiKey),
-          });
-        }
-      }
-    }
+    await refreshProviderCache(id);
 
     res.json({ success: true, models });
   } catch (err) {
@@ -162,21 +160,7 @@ router.delete('/:id/custom-models/:modelId', async (req, res) => {
     const { id, modelId } = req.params;
     const models = removeCustomModel(id, modelId);
 
-    // 同步更新缓存中的模型列表
-    const cache = getProviderCache();
-    if (cache[id]?.connected) {
-      const apiKey = await getApiKey(id);
-      if (apiKey) {
-        const result = await connectProvider(id, apiKey);
-        if (result.success) {
-          updateProviderCacheEntry(id, {
-            connected: true,
-            models: result.models,
-            maskedKey: maskKey(apiKey),
-          });
-        }
-      }
-    }
+    await refreshProviderCache(id);
 
     res.json({ success: true, models });
   } catch (err) {

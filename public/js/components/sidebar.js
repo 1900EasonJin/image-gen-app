@@ -1,7 +1,7 @@
 import state from '../state.js';
 import { fetchProviders, fetchCachedStatus, fetchProviderStatus } from '../api.js';
 import { $ } from '../utils/dom.js';
-import { t, getLang } from '../i18n.js';
+import { t } from '../i18n.js';
 
 const modelTrigger = $('#modelTrigger');
 const modelTriggerText = $('#modelTriggerText');
@@ -221,7 +221,7 @@ export async function refreshModelList() {
 
 /** 自动选择默认模型：仅火山 → Seedream 5.0 Lite，仅阿里 → Wan2.7 Pro，两者都有 → Seedream 5.0 Lite */
 function autoSelectDefaultModel() {
-  if (state.activeModelId) return; // 已选中就不覆盖
+  if (state.activeModelId) return;
 
   const hasVolcengine = state.models['volcengine']?.length > 0;
   const hasAliyun = state.models['aliyun']?.length > 0;

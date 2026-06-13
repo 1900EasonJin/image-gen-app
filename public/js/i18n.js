@@ -127,6 +127,17 @@ const translations = {
     'editModal.title': '修改图片',
     'editModal.cancel': '取消',
     'editModal.submit': '开始修改',
+
+    // Cache
+    'settings.cacheTitle': '图片缓存',
+    'settings.cacheLoading': '加载中...',
+    'settings.cacheStats': '{0} 张图片，{1} MB',
+    'settings.openCacheDir': '打开文件夹',
+    'settings.clearCache': '清除缓存',
+    'settings.clearing': '清除中...',
+    'settings.cacheCleared': '已清除 {0} 张缓存图片',
+    'settings.cacheClearedWithKept': '已清除 {0} 张孤儿图片，保留 {1} 张会话图片',
+    'settings.cacheClearFailed': '清除缓存失败',
   },
 
   en: {
@@ -242,6 +253,17 @@ const translations = {
     'editModal.title': 'Edit Image',
     'editModal.cancel': 'Cancel',
     'editModal.submit': 'Start Editing',
+
+    // Cache
+    'settings.cacheTitle': 'Image Cache',
+    'settings.cacheLoading': 'Loading...',
+    'settings.cacheStats': '{0} images, {1} MB',
+    'settings.openCacheDir': 'Open Folder',
+    'settings.clearCache': 'Clear Cache',
+    'settings.clearing': 'Clearing...',
+    'settings.cacheCleared': 'Cleared {0} cached images',
+    'settings.cacheClearedWithKept': 'Cleared {0} orphan images, kept {1} session images',
+    'settings.cacheClearFailed': 'Failed to clear cache',
   },
 };
 

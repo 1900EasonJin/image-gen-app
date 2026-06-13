@@ -48,12 +48,53 @@ export function loadImage(id) {
   };
 }
 
-/** 删除图片 */
+/** 删除单张图片 */
 export function deleteImage(id) {
   ensureDir();
-
   const files = fs.readdirSync(IMAGES_DIR).filter((f) => f.startsWith(id + '.'));
   files.forEach((f) => fs.unlinkSync(path.join(IMAGES_DIR, f)));
-
   return files.length > 0;
+}
+
+/** 批量删除图片 */
+export function deleteImages(ids) {
+  let count = 0;
+  for (const id of ids) {
+    if (deleteImage(id)) count++;
+  }
+  return count;
+}
+
+/**
+ * 清空孤儿图片缓存（未被任何会话引用的图片）
+ * @param {Set<string>} activeIds - 所有活跃会话中引用的图片 ID
+ * @returns {number} 删除数量
+ */
+export function clearOrphanImages(activeIds = new Set()) {
+  ensureDir();
+  const files = fs.readdirSync(IMAGES_DIR);
+  let deleted = 0;
+  for (const f of files) {
+    const imgId = f.split('.')[0]; // img_xxx.png → img_xxx
+    if (!activeIds.has(imgId)) {
+      try {
+        fs.unlinkSync(path.join(IMAGES_DIR, f));
+        deleted++;
+      } catch { /* 忽略 */ }
+    }
+  }
+  return deleted;
+}
+
+/** 获取缓存大小信息 */
+export function getCacheStats() {
+  ensureDir();
+  const files = fs.readdirSync(IMAGES_DIR);
+  let totalSize = 0;
+  for (const f of files) {
+    try {
+      totalSize += fs.statSync(path.join(IMAGES_DIR, f)).size;
+    } catch { /* 忽略 */ }
+  }
+  return { count: files.length, sizeBytes: totalSize };
 }

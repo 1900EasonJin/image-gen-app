@@ -1,6 +1,41 @@
 import fs from 'fs';
 import path from 'path';
 import os from 'os';
+import { deleteImages } from './images.js';
+
+/** 从会话数据中提取所有图片 ID */
+function extractImageIds(session) {
+  const ids = [];
+  if (session.iterations) {
+    for (const iter of session.iterations) {
+      if (iter.images) {
+        for (const img of iter.images) {
+          if (img.id) ids.push(img.id);
+        }
+      }
+    }
+  }
+  return ids;
+}
+
+/** 获取所有会话（含归档）中引用的图片 ID 集合 */
+export function getAllImageIds() {
+  const ids = new Set();
+  const dirs = [SESSIONS_DIR, ARCHIVE_DIR];
+  for (const dir of dirs) {
+    try {
+      if (!fs.existsSync(dir)) continue;
+      const files = fs.readdirSync(dir).filter((f) => f.endsWith('.json'));
+      for (const f of files) {
+        try {
+          const session = JSON.parse(fs.readFileSync(path.join(dir, f), 'utf8'));
+          for (const id of extractImageIds(session)) ids.add(id);
+        } catch { /* 跳过损坏文件 */ }
+      }
+    } catch { /* 跳过无法读取的目录 */ }
+  }
+  return ids;
+}
 
 const SESSIONS_DIR = path.join(os.homedir(), '.image-gen-v2', 'sessions');
 const ARCHIVE_DIR = path.join(os.homedir(), '.image-gen-v2', 'archive');
@@ -112,14 +147,15 @@ export function renameSession(id, newName, { archived = false } = {}) {
   return data;
 }
 
-/** 删除会话 */
+/** 删除会话（含关联图片） */
 export function deleteSession(id) {
   const filePath = path.join(SESSIONS_DIR, `${id}.json`);
-  if (fs.existsSync(filePath)) {
-    fs.unlinkSync(filePath);
-    return true;
-  }
-  return false;
+  if (!fs.existsSync(filePath)) return false;
+  const session = JSON.parse(fs.readFileSync(filePath, 'utf8'));
+  const imageIds = extractImageIds(session);
+  fs.unlinkSync(filePath);
+  if (imageIds.length > 0) deleteImages(imageIds);
+  return true;
 }
 
 /** 归档会话 */
@@ -150,14 +186,15 @@ export function unarchiveSession(id) {
   return true;
 }
 
-/** 删除归档会话 */
+/** 删除归档会话（含关联图片） */
 export function deleteArchivedSession(id) {
   const filePath = path.join(ARCHIVE_DIR, `${id}.json`);
-  if (fs.existsSync(filePath)) {
-    fs.unlinkSync(filePath);
-    return true;
-  }
-  return false;
+  if (!fs.existsSync(filePath)) return false;
+  const session = JSON.parse(fs.readFileSync(filePath, 'utf8'));
+  const imageIds = extractImageIds(session);
+  fs.unlinkSync(filePath);
+  if (imageIds.length > 0) deleteImages(imageIds);
+  return true;
 }
 
 /** 获取归档会话详情 */

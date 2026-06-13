@@ -118,3 +118,19 @@ export async function removeCustomModel(providerId, modelId) {
   });
   return resp.json();
 }
+
+// 图片缓存管理
+export async function getCacheStats() {
+  const resp = await fetch(`${BASE_URL}/api/images/cache/stats`);
+  return resp.json();
+}
+
+export async function clearImageCache() {
+  const resp = await fetch(`${BASE_URL}/api/images/cache`, { method: 'DELETE' });
+  return resp.json();
+}
+
+export async function openCacheDir() {
+  const resp = await fetch(`${BASE_URL}/api/images/cache/open-dir`, { method: 'POST' });
+  return resp.json();
+}
