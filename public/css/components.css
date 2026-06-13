@@ -90,7 +90,7 @@
   z-index: 100;
   max-height: 280px;
   overflow-y: auto;
-  animation: dropdown-enter 0.15s ease;
+  animation: pop-in 0.2s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .language-dropdown-list {
@@ -177,10 +177,10 @@
   z-index: 100;
   max-height: 280px;
   overflow-y: auto;
-  animation: dropdown-enter 0.15s ease;
+  animation: pop-in 0.2s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-@keyframes dropdown-enter {
+@keyframes pop-in {
   from {
     opacity: 0;
     transform: translateY(-4px);
@@ -539,14 +539,59 @@
   background: var(--accent-bg);
 }
 
-.session-delete-btn:hover,
-.session-delete-btn.confirm {
+.session-delete-btn:hover {
   color: var(--danger);
   background: var(--danger-bg);
 }
 
-.session-delete-btn.confirm {
-  animation: pulse-danger 0.8s ease infinite;
+/* ===== 删除确认气泡 ===== */
+.delete-bubble {
+  position: absolute;
+  z-index: 200;
+  background: var(--bg-primary);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-md);
+  padding: 8px 12px;
+  font-size: 12px;
+  color: var(--text-primary);
+  white-space: nowrap;
+  animation: bubble-pop 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  pointer-events: none;
+}
+
+/* 箭头朝左（气泡在按钮右侧） */
+.delete-bubble.arrow-left::after {
+  content: '';
+  position: absolute;
+  left: -6px;
+  top: 50%;
+  transform: translateY(-50%);
+  border-top: 6px solid transparent;
+  border-bottom: 6px solid transparent;
+  border-right: 6px solid var(--bg-primary);
+}
+
+.delete-bubble.arrow-left::before {
+  content: '';
+  position: absolute;
+  left: -8px;
+  top: 50%;
+  transform: translateY(-50%);
+  border-top: 7px solid transparent;
+  border-bottom: 7px solid transparent;
+  border-right: 7px solid var(--border);
+}
+
+@keyframes bubble-pop {
+  from {
+    opacity: 0;
+    transform: translateY(-50%) translateX(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(-50%) translateX(0);
+  }
 }
 
 .session-rename-input {
@@ -1087,17 +1132,17 @@
   border-radius: var(--radius);
   box-shadow: var(--shadow-md);
   z-index: 100;
-  animation: size-dropdown-enter 0.15s ease;
+  animation: pop-in-up 0.2s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-@keyframes size-dropdown-enter {
+@keyframes pop-in-up {
   from {
     opacity: 0;
-    transform: translateX(-50%) translateY(4px);
+    transform: translateX(-50%) translateY(4px) scale(0.95);
   }
   to {
     opacity: 1;
-    transform: translateX(-50%) translateY(0);
+    transform: translateX(-50%) translateY(0) scale(1);
   }
 }
 

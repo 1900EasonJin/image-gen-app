@@ -13,6 +13,62 @@ import { fetchSessions, fetchArchivedSessions, deleteSession as deleteSessionApi
 import state from './state.js';
 import { t, applyLanguage, setLang, getLang } from './i18n.js';
 
+// ===== 删除确认气泡 =====
+let activeDeleteBubble = null;
+let bubbleDismissTimer = null;
+
+function showDeleteBubble(btn) {
+  // 关闭已有气泡
+  dismissDeleteBubble();
+
+  const bubble = document.createElement('div');
+  bubble.className = 'delete-bubble arrow-left';
+  bubble.textContent = t('action.confirmDelete');
+
+  document.body.appendChild(bubble);
+
+  // 定位：固定在按钮右侧
+  const btnRect = btn.getBoundingClientRect();
+  bubble.style.position = 'fixed';
+  bubble.style.left = (btnRect.right + 8) + 'px';
+  bubble.style.top = (btnRect.top + btnRect.height / 2) + 'px';
+  bubble.style.transform = 'translateY(-50%)';
+
+  activeDeleteBubble = { bubble, btn };
+
+  // 鼠标离开按钮 + 气泡区域后 0.3s 淡出消失
+  const scheduleDismiss = () => {
+    clearTimeout(bubbleDismissTimer);
+    bubbleDismissTimer = setTimeout(() => {
+      bubble.style.transition = 'opacity 0.2s ease';
+      bubble.style.opacity = '0';
+      setTimeout(() => dismissDeleteBubble(), 200);
+    }, 200);
+  };
+
+  const cancelDismiss = () => {
+    clearTimeout(bubbleDismissTimer);
+    bubble.style.transition = '';
+    bubble.style.opacity = '';
+  };
+
+  btn.addEventListener('mouseleave', scheduleDismiss);
+  btn.addEventListener('mouseenter', cancelDismiss);
+  bubble.addEventListener('mouseenter', cancelDismiss);
+  bubble.addEventListener('mouseleave', scheduleDismiss);
+}
+
+function dismissDeleteBubble() {
+  if (activeDeleteBubble?.bubble) {
+    activeDeleteBubble.bubble.remove();
+    activeDeleteBubble = null;
+  }
+}
+
+function isDeleteConfirming(btn) {
+  return activeDeleteBubble?.btn === btn;
+}
+
 // 画布高度拖拽调整 — 分屏分割：画布区和输入区同时联动
 function initCanvasResize() {
   const handle = document.getElementById('canvasResizeHandle');
@@ -326,30 +382,22 @@ async function loadSessions() {
       // 删除按钮
       const deleteBtn = document.createElement('button');
       deleteBtn.className = 'btn-icon session-action-btn session-delete-btn';
-      deleteBtn.title = t('action.confirmDelete');
-      deleteBtn.dataset.confirming = 'false';
+      deleteBtn.title = t('action.delete');
       deleteBtn.innerHTML = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>';
       deleteBtn.addEventListener('click', async (e) => {
         e.stopPropagation();
-        if (deleteBtn.dataset.confirming === 'false') {
-          deleteBtn.dataset.confirming = 'true';
-          deleteBtn.classList.add('confirm');
-          deleteBtn.title = t('action.confirmDeleteTitle');
-          setTimeout(() => {
-            if (!deleteBtn.isConnected) return;
-            deleteBtn.dataset.confirming = 'false';
-            deleteBtn.classList.remove('confirm');
-            deleteBtn.title = t('action.confirmDelete');
-          }, 3000);
+        if (!isDeleteConfirming(deleteBtn)) {
+          showDeleteBubble(deleteBtn);
+          return;
+        }
+        dismissDeleteBubble();
+        const res = await deleteSessionApi(s.id);
+        if (res.success) {
+          showToast(t('toast.deleted'), 'info');
+          if (state.currentSession?.id === s.id) newSession();
+          loadSessions();
         } else {
-          const res = await deleteSessionApi(s.id);
-          if (res.success) {
-            showToast(t('toast.deleted'), 'info');
-            if (state.currentSession?.id === s.id) newSession();
-            loadSessions();
-          } else {
-            showToast(t('toast.deleteFailed'), 'error');
-          }
+          showToast(t('toast.deleteFailed'), 'error');
         }
       });
 
@@ -499,28 +547,20 @@ async function loadArchivedSessions() {
       // 删除按钮
       const deleteBtn = document.createElement('button');
       deleteBtn.className = 'btn-icon session-action-btn session-delete-btn';
-      deleteBtn.title = t('action.confirmDelete');
-      deleteBtn.dataset.confirming = 'false';
+      deleteBtn.title = t('action.delete');
       deleteBtn.innerHTML = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>';
       deleteBtn.addEventListener('click', async () => {
-        if (deleteBtn.dataset.confirming === 'false') {
-          deleteBtn.dataset.confirming = 'true';
-          deleteBtn.classList.add('confirm');
-          deleteBtn.title = t('action.confirmDeleteTitle');
-          setTimeout(() => {
-            if (!deleteBtn.isConnected) return;
-            deleteBtn.dataset.confirming = 'false';
-            deleteBtn.classList.remove('confirm');
-            deleteBtn.title = t('action.confirmDelete');
-          }, 3000);
+        if (!isDeleteConfirming(deleteBtn)) {
+          showDeleteBubble(deleteBtn);
+          return;
+        }
+        dismissDeleteBubble();
+        const res = await deleteArchivedSessionApi(s.id);
+        if (res.success) {
+          showToast(t('toast.permanentlyDeleted'), 'info');
+          loadArchivedSessions();
         } else {
-          const res = await deleteArchivedSessionApi(s.id);
-          if (res.success) {
-            showToast(t('toast.permanentlyDeleted'), 'info');
-            loadArchivedSessions();
-          } else {
-            showToast(t('toast.deleteFailed'), 'error');
-          }
+          showToast(t('toast.deleteFailed'), 'error');
         }
       });
 

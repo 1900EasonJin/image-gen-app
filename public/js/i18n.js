@@ -120,7 +120,7 @@ const translations = {
     'action.archive': '归档',
     'action.delete': '删除',
     'action.restore': '恢复',
-    'action.confirmDelete': '删除（再点一次确认）',
+    'action.confirmDelete': '再次点击确认删除',
     'action.confirmDeleteTitle': '确认删除？',
 
     // Edit Modal
@@ -235,7 +235,7 @@ const translations = {
     'action.archive': 'Archive',
     'action.delete': 'Delete',
     'action.restore': 'Restore',
-    'action.confirmDelete': 'Delete (click again to confirm)',
+    'action.confirmDelete': 'Click again to confirm',
     'action.confirmDeleteTitle': 'Confirm delete?',
 
     // Edit Modal
