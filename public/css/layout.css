@@ -237,6 +237,34 @@
   background: transparent;
 }
 
+.canvas-grid.canvas-transition-in {
+  position: relative;
+  z-index: 1;
+  opacity: 0;
+  transition: opacity 0.42s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.canvas-grid.canvas-transition-in.canvas-transition-in-active {
+  opacity: 1;
+}
+
+.canvas-grid.canvas-transition-in .image-card {
+  animation: none !important;
+}
+
+.canvas-ghost-grid {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  pointer-events: none;
+  opacity: 1;
+  transition: opacity 0.42s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.canvas-ghost-grid.canvas-transition-out {
+  opacity: 0;
+}
+
 /* ========== 按数量自适应布局（无滚动条）========== */
 
 /* 1 张：居中单张大图，容器跟随图片实际比例，上下留空隙 */
@@ -538,6 +566,25 @@
 
 .input-area.edit-mode {
   /* 仅保留动画效果，不留橙色边框 */
+}
+
+.input-area.entering-edit {
+  animation: inputEditEnter 0.24s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+@keyframes inputEditEnter {
+  0% {
+    box-shadow: var(--shadow-sm);
+    transform: translateY(0);
+  }
+  45% {
+    box-shadow: 0 0 0 3px rgba(217, 119, 6, 0.10), var(--shadow-sm);
+    transform: translateY(-2px);
+  }
+  100% {
+    box-shadow: var(--shadow-sm);
+    transform: translateY(0);
+  }
 }
 
 .input-wrapper {

@@ -1,7 +1,7 @@
 import { init as sidebarInit } from './components/sidebar.js';
 import { init as settingsInit } from './components/settings.js';
-import { init as inputInit, enterEditMode, exitEditMode, exitImg2ImgMode } from './components/input-area.js';
-import { renderResult, setPrompt, showEmpty } from './components/result-grid.js';
+import { init as inputInit, enterEditMode, exitEditMode, resetImg2ImgMode } from './components/input-area.js';
+import { renderResult, renderResultCrossfade, setPrompt, showEmpty } from './components/result-grid.js';
 import { init as lightboxInit, open as openLightbox } from './components/lightbox.js';
 import { init as workAreaInit } from './components/work-area.js';
 import { init as galleryPanelInit } from './components/gallery-panel.js';
@@ -339,8 +339,8 @@ function newSession() {
   document.getElementById('promptInput').placeholder = t('input.placeholder');
 
   state.sessionModeLocked = false;
-  exitEditMode();
-  exitImg2ImgMode();
+  exitEditMode({ animate: false, restoreReturnMode: false, force: true });
+  resetImg2ImgMode();
   applySessionMode('draw', { lock: false });
 
   showEmpty();
@@ -613,10 +613,19 @@ async function loadSessionDetail(sessionId) {
     const session = data.session;
     state.currentSession = session;
 
-    // 浏览历史时退出编辑状态，并恢复该会话创建时选定的模式
-    exitEditMode();
-    exitImg2ImgMode();
-    applySessionMode(session.mode || 'draw', { lock: true });
+    // 浏览历史时退出编辑状态，并恢复该会话创建时选定的模式；不沿用当前临时图生图状态
+    const targetMode = session.mode === 'img2img' ? 'img2img' : 'draw';
+    if (state.workMode === 'edit') {
+      // 从修改模式切换历史会话时，按目标会话模式播放对应的退出修改动画
+      await exitEditMode({ animate: true, restoreReturnMode: false, targetMode, force: true });
+      if (targetMode === 'draw') {
+        resetImg2ImgMode();
+      }
+    } else {
+      exitEditMode({ animate: false, restoreReturnMode: false, force: true });
+      resetImg2ImgMode();
+    }
+    applySessionMode(targetMode, { lock: true });
 
     // 浏览历史时清空输入框
     const promptInput = document.getElementById('promptInput');
@@ -640,8 +649,8 @@ async function loadSessionDetail(sessionId) {
       });
 
       setPrompt(session.prompt || '');
-      // 默认只展示第一张图片
-      renderResult(latestImages.length > 0 ? [latestImages[0]] : []);
+      // 默认只展示第一张图片；历史切换使用交叉淡入淡出，避免闪屏
+      await renderResultCrossfade(latestImages.length > 0 ? [latestImages[0]] : []);
       // 浏览历史时默认生图模式，不显示迭代链
       clearChain();
 

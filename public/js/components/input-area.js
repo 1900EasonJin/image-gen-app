@@ -33,6 +33,30 @@ const img2imgStationRow = $('#img2imgStationRow');
 let editModeOriginalPlaceholder = '';
 let img2imgOriginalPlaceholder = '';
 let img2imgImageData = null;
+let editContext = {
+  returnMode: 'draw',
+  hadImg2ImgImages: false,
+};
+let modeTransitioning = false;
+
+const MODE_TIMING = {
+  img2imgLeave: 340,
+  chain: 300,
+  img2imgRestore: 320,
+  inputEditEnter: 260,
+};
+
+function delay(ms) {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+function playClassAnimation(el, className, duration) {
+  if (!el) return;
+  el.classList.remove(className);
+  void el.offsetWidth;
+  el.classList.add(className);
+  window.setTimeout(() => el.classList.remove(className), duration);
+}
 
 export function init() {
   editModeOriginalPlaceholder = promptInput.placeholder;
@@ -265,6 +289,14 @@ function removeImg2ImgImage() {
   img2imgDropZone.classList.remove('has-image');
 }
 
+export function resetImg2ImgMode() {
+  removeImg2ImgImage();
+  img2imgDropZone.classList.add('collapsed');
+  img2imgStationRow.classList.add('collapsed');
+  const inputArea = document.getElementById('inputArea');
+  inputArea?.classList.remove('img2img-mode');
+}
+
 /** 渲染多张缩略图到预览区，每张带独立删除按钮 */
 function renderMultiThumbnails(urls) {
   img2imgPreviewWrapper.innerHTML = '';
@@ -318,6 +350,22 @@ function removeSingleImage(index) {
   }
 }
 
+/** 恢复图生图参考图区预览 */
+function restoreImg2ImgPreview({ showStation = false } = {}) {
+  const savedImages = window.img2imgMultiImages;
+  if (!savedImages || savedImages.length === 0) return false;
+
+  img2imgImageData = savedImages[0];
+  state.referenceImage = savedImages[0];
+  img2imgDropContent.classList.add('hidden');
+  img2imgPreviewWrapper.classList.remove('hidden');
+  img2imgDropZone.classList.add('has-image');
+  img2imgDropZone.classList.remove('collapsed');
+  img2imgStationRow.classList.toggle('collapsed', !showStation);
+  renderMultiThumbnails(savedImages);
+  return true;
+}
+
 function enterImg2ImgMode() {
   if (state.referenceImage && !img2imgImageData) {
     exitEditMode();
@@ -328,15 +376,7 @@ function enterImg2ImgMode() {
   img2imgStationRow.classList.remove('collapsed');
 
   // 恢复之前保存的参考图
-  const savedImages = window.img2imgMultiImages;
-  if (savedImages && savedImages.length > 0 && !img2imgImageData) {
-    img2imgImageData = savedImages[0];
-    state.referenceImage = savedImages[0];
-    img2imgDropContent.classList.add('hidden');
-    img2imgPreviewWrapper.classList.remove('hidden');
-    img2imgDropZone.classList.add('has-image');
-    renderMultiThumbnails(savedImages);
-  }
+  restoreImg2ImgPreview({ showStation: true });
 
   const inputArea = document.getElementById('inputArea');
   if (inputArea) {
@@ -373,16 +413,26 @@ export function exitImg2ImgMode() {
   updateModeTag();
 }
 
+function syncModeToggle(mode) {
+  const modeToggle = document.getElementById('modeToggle');
+  if (!modeToggle) return;
+
+  modeToggle.classList.toggle('img2img', mode === 'img2img');
+  modeToggle.querySelectorAll('.mode-option').forEach((btn) => {
+    btn.classList.toggle('active', btn.dataset.mode === mode);
+  });
+}
+
 function updateModeTag() {
   const modeTag = document.getElementById('modeTag');
   if (!modeTag) return;
 
   modeTag.classList.remove('edit', 'img2img');
 
-  if (state.referenceImage && !img2imgImageData) {
+  if (state.workMode === 'edit' || (state.referenceImage && !img2imgImageData)) {
     modeTag.textContent = '🖊 ' + t('input.editModeBadge');
     modeTag.classList.add('edit');
-  } else if (state.workMode === 'img2img' || img2imgImageData) {
+  } else if (state.workMode === 'img2img') {
     modeTag.textContent = '🖼 ' + t('input.img2imgModeBadge');
     modeTag.classList.add('img2img');
   } else {
@@ -476,8 +526,39 @@ export async function handleGenerate() {
 }
 
 export function enterEditMode(referenceImage, src, id) {
-  if (state.workMode === 'img2img') {
-    exitImg2ImgMode();
+  transitionToEditMode(referenceImage, src, id);
+}
+
+export function exitEditMode(options = {}) {
+  return transitionFromEditMode(options);
+}
+
+async function transitionToEditMode(referenceImage, src, id) {
+  if (modeTransitioning) return;
+  modeTransitioning = true;
+
+  // 如果已经在修改模式里再次点击“修改”，不要覆盖首次进入修改模式时记录的来源模式
+  const fromMode = state.workMode === 'edit'
+    ? editContext.returnMode
+    : (state.workMode === 'img2img' ? 'img2img' : 'draw');
+
+  if (state.workMode !== 'edit') {
+    editContext = {
+      returnMode: fromMode,
+      hadImg2ImgImages: !!window.img2imgMultiImages?.length,
+    };
+  }
+
+  const inputArea = document.getElementById('inputArea');
+
+  if (fromMode === 'img2img') {
+    // 进入修改模式时：参考图区先柔和淡出，再与高度折叠衔接，避免“下坠后突然消失”
+    playClassAnimation(img2imgDropZone, 'leaving', MODE_TIMING.img2imgLeave);
+    await delay(110);
+    img2imgDropZone.classList.add('collapsed');
+    img2imgStationRow.classList.add('collapsed');
+    inputArea?.classList.remove('img2img-mode');
+    await delay(MODE_TIMING.img2imgLeave - 40);
   }
 
   state.referenceImage = referenceImage;
@@ -485,31 +566,79 @@ export function enterEditMode(referenceImage, src, id) {
   promptInput.value = '';
   promptInput.placeholder = t('input.editPlaceholder');
 
-  const inputArea = document.getElementById('inputArea');
   if (inputArea) {
     inputArea.classList.add('edit-mode');
     inputArea.classList.remove('img2img-mode');
+    playClassAnimation(inputArea, 'entering-edit', MODE_TIMING.inputEditEnter);
   }
 
   updateModeTag();
+  document.getElementById('modeTag')?.classList.add('bounce');
+  window.setTimeout(() => document.getElementById('modeTag')?.classList.remove('bounce'), 520);
 
   state.editChain = [{ src, id, label: t('iteration.original') }];
+  await delay(fromMode === 'img2img' ? 120 : 0);
   renderEditChain(state.editChain);
   promptInput.focus();
+
+  modeTransitioning = false;
 }
 
-export function exitEditMode() {
+async function transitionFromEditMode({ animate = true, restoreReturnMode = true, force = false, targetMode = null } = {}) {
+  if (modeTransitioning && !force) return;
+  modeTransitioning = true;
+
   state.referenceImage = null;
   state.editChain = [];
   refImagePreview.classList.add('hidden');
-  promptInput.placeholder = t('input.placeholder');
 
   const inputArea = document.getElementById('inputArea');
   if (inputArea) {
     inputArea.classList.remove('edit-mode');
   }
 
-  state.workMode = 'draw';
-  updateModeTag();
   clearChain();
+  if (animate) {
+    await delay(MODE_TIMING.chain);
+  }
+
+  if ((restoreReturnMode && editContext.returnMode === 'img2img') || targetMode === 'img2img') {
+    state.workMode = 'img2img';
+    if (inputArea) {
+      inputArea.classList.add('img2img-mode');
+    }
+    promptInput.placeholder = t('input.img2imgPlaceholder');
+    syncModeToggle('img2img');
+    updateModeTag();
+
+    img2imgDropZone.classList.remove('collapsed');
+    img2imgStationRow.classList.remove('collapsed');
+
+    const restored = restoreReturnMode ? restoreImg2ImgPreview({ showStation: true }) : false;
+    if (!restored) {
+      img2imgImageData = null;
+      window.img2imgMultiImages = null;
+      img2imgFileInput.value = '';
+      img2imgDropZone.classList.remove('has-image');
+      img2imgPreviewWrapper.classList.add('hidden');
+      img2imgPreviewWrapper.innerHTML = '';
+      img2imgDropContent.classList.remove('hidden');
+    }
+
+    if (animate) {
+      playClassAnimation(img2imgDropZone, 'restoring', MODE_TIMING.img2imgRestore);
+    }
+    promptInput.focus();
+    modeTransitioning = false;
+    return;
+  }
+
+  state.workMode = 'draw';
+  promptInput.placeholder = t('input.placeholder');
+  img2imgDropZone.classList.add('collapsed');
+  img2imgStationRow.classList.add('collapsed');
+  syncModeToggle('draw');
+  updateModeTag();
+  promptInput.focus();
+  modeTransitioning = false;
 }

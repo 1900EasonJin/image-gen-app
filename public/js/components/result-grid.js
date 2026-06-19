@@ -3,6 +3,7 @@ import { $ } from '../utils/dom.js';
 import { t } from '../i18n.js';
 
 const canvasGrid = document.getElementById('canvasGrid');
+const canvasArea = document.getElementById('canvasArea');
 const canvasPlaceholder = document.getElementById('canvasPlaceholder');
 
 let currentPrompt = '';
@@ -69,6 +70,11 @@ export function renderResult(images) {
     imgEl.alt = img.id;
     imgEl.loading = 'lazy';
 
+    // 先使用预加载阶段记录的尺寸，避免淡入过程中 onload 再改比例导致“跳一下”
+    if (img.__naturalWidth && img.__naturalHeight) {
+      card.style.aspectRatio = `${img.__naturalWidth} / ${img.__naturalHeight}`;
+    }
+
     // 图片加载后，根据实际尺寸动态设置 card 宽高比
     imgEl.onload = () => {
       const nw = imgEl.naturalWidth;
@@ -113,6 +119,57 @@ export function renderResult(images) {
     card.appendChild(overlay);
     canvasGrid.appendChild(card);
   });
+}
+
+/** 历史会话切换：旧画面保留，新图预加载完成后再交叉淡入淡出 */
+export async function renderResultCrossfade(images) {
+  const hasOldCanvas = !canvasGrid.classList.contains('hidden') && canvasGrid.children.length > 0;
+
+  if (!hasOldCanvas || !images || images.length === 0) {
+    renderResult(images);
+    return;
+  }
+
+  await preloadImages(images);
+
+  const ghostGrid = canvasGrid.cloneNode(true);
+  ghostGrid.removeAttribute('id');
+  ghostGrid.classList.add('canvas-ghost-grid');
+  ghostGrid.querySelectorAll('[id]').forEach(el => el.removeAttribute('id'));
+  canvasArea.appendChild(ghostGrid);
+
+  renderResult(images);
+  canvasGrid.classList.add('canvas-transition-in');
+
+  requestAnimationFrame(() => {
+    requestAnimationFrame(() => {
+      ghostGrid.classList.add('canvas-transition-out');
+      canvasGrid.classList.add('canvas-transition-in-active');
+    });
+  });
+
+  window.setTimeout(() => {
+    ghostGrid.remove();
+    canvasGrid.classList.remove('canvas-transition-in', 'canvas-transition-in-active');
+  }, 460);
+}
+
+function preloadImages(images) {
+  const items = (images || [])
+    .map((item) => ({ item, src: resolveImageSrc(item) }))
+    .filter(({ src }) => Boolean(src));
+  if (items.length === 0) return Promise.resolve();
+
+  return Promise.allSettled(items.map(({ item, src }) => new Promise((resolve) => {
+    const img = new Image();
+    img.onload = () => {
+      item.__naturalWidth = img.naturalWidth;
+      item.__naturalHeight = img.naturalHeight;
+      resolve();
+    };
+    img.onerror = resolve;
+    img.src = src;
+  })));
 }
 
 function resolveImageSrc(img) {
