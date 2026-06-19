@@ -1,17 +1,16 @@
 import state from '../state.js';
 import { t } from '../i18n.js';
 import { renderResult } from './result-grid.js';
+import { collectImage } from './transfer-station.js';
 
 const galleryList = document.getElementById('galleryList');
 const galleryEmpty = document.getElementById('galleryEmpty');
 const galleryPanel = document.getElementById('galleryPanel');
 const galleryResizeHandle = document.getElementById('galleryResizeHandle');
 
-// 所有缩略图数据
 let galleryItems = [];
 
 export function init() {
-  // 画廊宽度拖拽调整
   let isResizing = false;
   let resizeStartX = 0;
   let resizeStartWidth = 0;
@@ -40,7 +39,7 @@ export function init() {
     document.body.style.cursor = '';
     document.body.style.userSelect = '';
   });
-  // 监听生成完成 → 追加缩略图
+
   window.addEventListener('imagesGenerated', (e) => {
     const result = e.detail;
     if (result.images && result.images.length > 0) {
@@ -48,7 +47,6 @@ export function init() {
     }
   });
 
-  // 监听切换迭代 → 更新缩略图
   window.addEventListener('switchIteration', (e) => {
     const { iteration } = e.detail;
     if (iteration.images) {
@@ -63,7 +61,6 @@ export function init() {
   });
 }
 
-/** 追加图片到面板（内部方法） */
 function appendImages(images) {
   hideEmpty();
 
@@ -71,32 +68,26 @@ function appendImages(images) {
     const src = resolveImageSrc(img);
     if (!src) return;
 
-    // 避免重复
     if (galleryItems.find((item) => item.id === img.id)) return;
 
     galleryItems.push({ id: img.id, src, sourceUrl: img.sourceUrl || img.url || null });
 
     const thumb = createThumbElement(img.id, src, img.sourceUrl || img.url || null);
     galleryList.appendChild(thumb);
-
-    // 滚动到底部
     galleryList.scrollTop = galleryList.scrollHeight;
   });
 }
 
-/** 导出：追加图片到面板（供 app.js 加载历史会话时使用） */
 export function appendToGallery(images) {
   appendImages(images);
 }
 
-/** 导出：清空面板（供 app.js 新建会话时使用） */
 export function clearGallery() {
   galleryItems = [];
   galleryList.innerHTML = '';
   showEmpty();
 }
 
-/** 创建单个缩略图元素 */
 function createThumbElement(id, src, sourceUrl) {
   const thumb = document.createElement('div');
   thumb.className = 'gallery-thumb';
@@ -108,28 +99,31 @@ function createThumbElement(id, src, sourceUrl) {
   imgEl.alt = id;
   imgEl.loading = 'lazy';
 
-  // 悬停操作层
   const overlay = document.createElement('div');
   overlay.className = 'gallery-thumb-overlay';
   overlay.innerHTML = `
     <button class="btn-icon" title="${t('action.edit')}" data-action="edit">
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
     </button>
+    <button class="btn-icon btn-collect" title="${t('action.collect')}" data-action="collect">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>
+    </button>
   `;
 
-  // 事件：点击缩略图 → 淡出当前画布，以单图模式淡入显示
   imgEl.addEventListener('click', () => {
     const canvasGrid = document.getElementById('canvasGrid');
     const currentCards = canvasGrid.querySelectorAll('.image-card');
-    
+
+    // 如果点击的图片已经在画布上，不做任何操作（避免闪烁）
+    if (currentCards.length === 1 && currentCards[0].dataset.id === id) return;
+
     if (currentCards.length > 0) {
-      // 有图片时，先淡出再渲染新图
       currentCards.forEach((c) => {
         c.style.transition = 'opacity 0.4s ease, transform 0.4s ease';
         c.style.opacity = '0';
         c.style.transform = 'scale(0.92)';
       });
-      
+
       setTimeout(() => {
         renderResult([{
           id,
@@ -139,7 +133,6 @@ function createThumbElement(id, src, sourceUrl) {
         }]);
       }, 420);
     } else {
-      // 画布为空，直接渲染
       renderResult([{
         id,
         dataUrl: src,
@@ -149,24 +142,25 @@ function createThumbElement(id, src, sourceUrl) {
     }
   });
 
-  // 事件：点击修改按钮 → 淡出当前画布，以单图模式淡入新图，再进入编辑模式
   overlay.querySelectorAll('.btn-icon').forEach((btn) => {
     btn.addEventListener('click', (e) => {
       e.stopPropagation();
       const action = btn.dataset.action;
+      if (action === 'collect') {
+        collectImage(src, '', state.currentSession?.id);
+        return;
+      }
       if (action === 'edit') {
         const canvasGrid = document.getElementById('canvasGrid');
         const currentCards = canvasGrid.querySelectorAll('.image-card');
-        
+
         if (currentCards.length > 0) {
-          // 淡出所有当前卡片
           currentCards.forEach((c) => {
             c.style.transition = 'opacity 0.4s ease, transform 0.4s ease';
             c.style.opacity = '0';
             c.style.transform = 'scale(0.92)';
           });
-          
-          // 420ms后淡入新图并进入编辑模式
+
           setTimeout(() => {
             renderResult([{
               id,
@@ -174,8 +168,7 @@ function createThumbElement(id, src, sourceUrl) {
               url: sourceUrl || null,
               sourceUrl: sourceUrl || null,
             }]);
-            
-            // 再等一帧后触发编辑事件
+
             requestAnimationFrame(() => {
               window.dispatchEvent(new CustomEvent('editImage', {
                 detail: { src, id, sourceUrl: thumb.dataset.sourceUrl || null },
@@ -183,14 +176,13 @@ function createThumbElement(id, src, sourceUrl) {
             });
           }, 420);
         } else {
-          // 画布为空，直接渲染并进入编辑模式
           renderResult([{
             id,
             dataUrl: src,
             url: sourceUrl || null,
             sourceUrl: sourceUrl || null,
           }]);
-          
+
           requestAnimationFrame(() => {
             window.dispatchEvent(new CustomEvent('editImage', {
               detail: { src, id, sourceUrl: thumb.dataset.sourceUrl || null },

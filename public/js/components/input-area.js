@@ -6,6 +6,7 @@ import { t } from '../i18n.js';
 import { renderEditChain, clearChain } from './iteration-chain.js';
 import { appendToGallery } from './gallery-panel.js';
 import { renderResult, setPrompt } from './result-grid.js';
+import { openStation } from './transfer-station.js';
 
 const promptInput = $('#promptInput');
 const generateBtn = $('#generateBtn');
@@ -14,7 +15,7 @@ const sizeTriggerText = $('#sizeTriggerText');
 const sizeDropdown = $('#sizeDropdown');
 const sizeDropdownList = $('#sizeDropdownList');
 const modelBadge = $('#modelBadge');
-let currentSize = '2k'; // 当前选中的分辨率
+let currentSize = '2k';
 const refImagePreview = $('#refImagePreview');
 const refImageThumb = $('#refImageThumb');
 const removeRefBtn = $('#removeRefBtn');
@@ -22,28 +23,50 @@ const loadingOverlay = $('#loadingOverlay');
 const editModal = $('#editModal');
 const editModalPrompt = $('#editModalPrompt');
 
+// 图生图模式元素
+const img2imgDropZone = $('#img2imgDropZone');
+const img2imgFileInput = $('#img2imgFileInput');
+const img2imgDropContent = $('#img2imgDropContent');
+const img2imgPreviewWrapper = $('#img2imgPreviewWrapper');
+const img2imgStationRow = $('#img2imgStationRow');
+
 let editModeOriginalPlaceholder = '';
+let img2imgOriginalPlaceholder = '';
+let img2imgImageData = null;
 
 export function init() {
   editModeOriginalPlaceholder = promptInput.placeholder;
+  img2imgOriginalPlaceholder = t('input.img2imgPlaceholder');
 
-  // Listen for language changes to update placeholders
   window.addEventListener('languageChanged', () => {
     if (!state.referenceImage) {
-      promptInput.placeholder = t('input.placeholder');
+      if (state.workMode === 'img2img') {
+        promptInput.placeholder = t('input.img2imgPlaceholder');
+        img2imgOriginalPlaceholder = t('input.img2imgPlaceholder');
+      } else {
+        promptInput.placeholder = t('input.placeholder');
+      }
     }
-    // 只有未选择模型时才显示占位文字
     if (!state.activeModelId) {
       modelBadge.textContent = t('input.noModel');
     }
-    // 更新模式标签
-    const modeTagEl = document.getElementById('modeTag');
-    if (modeTagEl) {
-      modeTagEl.textContent = state.referenceImage
-        ? ('🖊 ' + t('input.editModeBadge'))
-        : ('🎨 ' + t('input.drawModeBadge'));
+    updateModeTag();
+    const dropLabel = document.querySelector('.img2img-drop-label');
+    if (dropLabel) dropLabel.textContent = t('input.img2imgDropText');
+  });
+
+  // 监听工作区模式切换
+  window.addEventListener('workModeChanged', (e) => {
+    const { mode } = e.detail;
+    if (mode === 'img2img') {
+      enterImg2ImgMode();
+    } else {
+      exitImg2ImgMode();
     }
   });
+
+  // 图生图拖放上传
+  initImg2ImgDropZone();
 
   // 分辨率上拉选择器
   let sizeDropdownOpen = false;
@@ -78,11 +101,8 @@ export function init() {
     closeSizeDropdown();
   }
 
-  // 模型切换时更新尺寸选项
   window.addEventListener('modelSelected', (e) => {
     const { sizes } = e.detail || {};
-
-    // 更新分辨率选项
     if (sizes && sizes.length > 0) {
       sizeDropdownList.innerHTML = '';
       sizes.forEach((s) => {
@@ -95,22 +115,18 @@ export function init() {
         opt.addEventListener('click', () => updateSizeSelection(s));
         sizeDropdownList.appendChild(opt);
       });
-      // 默认选中第一个
       if (sizes.length > 0) {
         updateSizeSelection(sizes[0]);
       }
     }
   });
 
-  // 生成按钮
   generateBtn.addEventListener('click', handleGenerate);
 
-  // 标记 IME 组合输入状态，防止中文输入法确认时误触发送
   let isComposing = false;
   promptInput.addEventListener('compositionstart', () => { isComposing = true; });
   promptInput.addEventListener('compositionend', () => { isComposing = false; });
 
-  // Enter 发送，Shift+Enter 换行（IME 组合中 Enter 不发送）
   promptInput.addEventListener('keydown', (e) => {
     if (e.key === 'Enter' && !e.shiftKey && !isComposing) {
       e.preventDefault();
@@ -118,13 +134,11 @@ export function init() {
     }
   });
 
-  // 移除参考图
   removeRefBtn.addEventListener('click', () => {
     state.referenceImage = null;
     refImagePreview.classList.add('hidden');
   });
 
-  // 修改弹窗 — 开始修改
   $('#editModalSubmit').addEventListener('click', () => {
     const editPrompt = editModalPrompt.value.trim();
     if (!editPrompt) {
@@ -136,20 +150,231 @@ export function init() {
     handleGenerate();
   });
 
-  // 修改弹窗 — 取消
   $('#editModalCancel').addEventListener('click', () => {
     editModal.classList.add('hidden');
   });
 
-  // 文本样式按钮（预留）
   $('#btnTextStyle')?.addEventListener('click', () => {
     showToast(t('toast.textStyleTodo'), 'info');
   });
 
-  // 迭代链条退出修改模式
   $('#exitEditBtn')?.addEventListener('click', () => {
     exitEditMode();
   });
+}
+
+// ===== 图生图模式 =====
+
+function initImg2ImgDropZone() {
+  if (!img2imgDropZone || !img2imgFileInput) return;
+
+  const stationLink = document.getElementById('img2imgStationLink');
+  if (stationLink) {
+    stationLink.addEventListener('click', (e) => {
+      e.stopPropagation();
+      openStation((dataUrls) => {
+        const urls = Array.isArray(dataUrls) ? dataUrls : [dataUrls];
+        if (urls.length === 0) return;
+
+        img2imgImageData = urls[0];
+        state.referenceImage = urls[0];
+        window.img2imgMultiImages = urls;
+
+        img2imgDropContent.classList.add('hidden');
+        img2imgPreviewWrapper.classList.remove('hidden');
+        img2imgDropZone.classList.add('has-image');
+        img2imgDropZone.classList.remove('drag-over');
+        renderMultiThumbnails(urls);
+
+        showToast(`已选择 ${urls.length} 张图片`, 'success');
+      });
+    });
+  }
+
+  img2imgFileInput.addEventListener('change', () => {
+    const file = img2imgFileInput.files[0];
+    if (file) handleImg2ImgFile(file);
+  });
+
+  img2imgDropZone.addEventListener('dragover', (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    img2imgDropZone.classList.add('drag-over');
+  });
+
+  img2imgDropZone.addEventListener('dragleave', (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    img2imgDropZone.classList.remove('drag-over');
+  });
+
+  img2imgDropZone.addEventListener('drop', (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    img2imgDropZone.classList.remove('drag-over');
+    const file = e.dataTransfer.files[0];
+    if (file && file.type.startsWith('image/')) {
+      handleImg2ImgFile(file);
+    } else {
+      showToast('请拖放图片文件', 'error');
+    }
+  });
+
+  // 不再使用一键删除按钮，改为每个缩略图独立删除
+
+  document.addEventListener('paste', (e) => {
+    if (state.workMode !== 'img2img') return;
+    const items = e.clipboardData?.items;
+    if (!items) return;
+    for (const item of items) {
+      if (item.type.startsWith('image/')) {
+        e.preventDefault();
+        const file = item.getAsFile();
+        handleImg2ImgFile(file);
+        break;
+      }
+    }
+  });
+}
+
+function handleImg2ImgFile(file) {
+  const reader = new FileReader();
+  reader.onload = () => {
+    img2imgImageData = reader.result;
+    state.referenceImage = reader.result;
+    window.img2imgMultiImages = [reader.result];
+
+    img2imgDropContent.classList.add('hidden');
+    img2imgPreviewWrapper.classList.remove('hidden');
+    img2imgDropZone.classList.add('has-image');
+    img2imgDropZone.classList.remove('drag-over');
+    renderMultiThumbnails([reader.result]);
+    showToast('图片已上传', 'success');
+  };
+  reader.readAsDataURL(file);
+}
+
+function removeImg2ImgImage() {
+  img2imgImageData = null;
+  state.referenceImage = null;
+  window.img2imgMultiImages = null;
+  img2imgFileInput.value = '';
+  img2imgPreviewWrapper.classList.add('hidden');
+  img2imgPreviewWrapper.innerHTML = '';
+  img2imgDropContent.classList.remove('hidden');
+  img2imgDropZone.classList.remove('has-image');
+}
+
+/** 渲染多张缩略图到预览区，每张带独立删除按钮 */
+function renderMultiThumbnails(urls) {
+  img2imgPreviewWrapper.innerHTML = '';
+  urls.forEach((url, index) => {
+    const container = document.createElement('div');
+    container.className = 'img2img-thumb-container';
+
+    const thumb = document.createElement('img');
+    thumb.className = 'img2img-preview-img';
+    thumb.src = url;
+    thumb.alt = '参考图';
+
+    const delBtn = document.createElement('button');
+    delBtn.className = 'btn-icon img2img-thumb-remove';
+    delBtn.innerHTML = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>';
+    delBtn.title = '移除这张图片';
+    delBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      e.preventDefault();
+      removeSingleImage(index);
+    });
+
+    container.appendChild(thumb);
+    container.appendChild(delBtn);
+    img2imgPreviewWrapper.appendChild(container);
+  });
+}
+
+/** 删除指定索引的单张图片 */
+function removeSingleImage(index) {
+  const urls = window.img2imgMultiImages;
+  if (!urls || index < 0 || index >= urls.length) return;
+
+  urls.splice(index, 1);
+
+  if (urls.length === 0) {
+    // 所有图片都删完了，重置状态
+    img2imgImageData = null;
+    state.referenceImage = null;
+    window.img2imgMultiImages = null;
+    img2imgFileInput.value = '';
+    img2imgPreviewWrapper.classList.add('hidden');
+    img2imgPreviewWrapper.innerHTML = '';
+    img2imgDropContent.classList.remove('hidden');
+    img2imgDropZone.classList.remove('has-image');
+  } else {
+    // 更新 referenceImage 为第一张
+    img2imgImageData = urls[0];
+    state.referenceImage = urls[0];
+    renderMultiThumbnails(urls);
+  }
+}
+
+function enterImg2ImgMode() {
+  if (state.referenceImage && !img2imgImageData) {
+    exitEditMode();
+  }
+
+  state.workMode = 'img2img';
+  img2imgDropZone.classList.remove('collapsed');
+  img2imgStationRow.classList.remove('collapsed');
+
+  const inputArea = document.getElementById('inputArea');
+  if (inputArea) {
+    inputArea.classList.add('img2img-mode');
+    inputArea.classList.remove('edit-mode');
+  }
+
+  promptInput.placeholder = t('input.img2imgPlaceholder');
+  updateModeTag();
+  promptInput.focus();
+}
+
+export function exitImg2ImgMode() {
+  state.workMode = state.referenceImage ? 'edit' : 'draw';
+
+  const inputArea = document.getElementById('inputArea');
+  if (inputArea) {
+    inputArea.classList.remove('img2img-mode');
+  }
+
+  if (img2imgImageData) {
+    removeImg2ImgImage();
+  }
+
+  requestAnimationFrame(() => {
+    if (state.workMode !== 'img2img') {
+      img2imgDropZone.classList.add('collapsed');
+      img2imgStationRow.classList.add('collapsed');
+    }
+  });
+  promptInput.placeholder = t('input.placeholder');
+  updateModeTag();
+}
+
+function updateModeTag() {
+  const modeTag = document.getElementById('modeTag');
+  if (!modeTag) return;
+
+  modeTag.classList.remove('edit', 'img2img');
+
+  if (state.referenceImage && !img2imgImageData) {
+    modeTag.textContent = '🖊 ' + t('input.editModeBadge');
+    modeTag.classList.add('edit');
+  } else if (state.workMode === 'img2img' || img2imgImageData) {
+    modeTag.textContent = '🖼 ' + t('input.img2imgModeBadge');
+    modeTag.classList.add('img2img');
+  } else {
+    modeTag.textContent = '🎨 ' + t('input.drawModeBadge');
+  }
 }
 
 export async function handleGenerate() {
@@ -164,7 +389,6 @@ export async function handleGenerate() {
     return;
   }
 
-  // 设置生成中状态
   state.generating = true;
   generateBtn.disabled = true;
   promptInput.disabled = true;
@@ -172,7 +396,6 @@ export async function handleGenerate() {
   if (canvasPlaceholder) canvasPlaceholder.classList.add('hidden');
   loadingOverlay.classList.remove('hidden');
 
-  // debug: 打印本次生图参数
   const hasRef = !!state.referenceImage;
   console.log(`[handleGenerate] prompt="${prompt}" hasRef=${hasRef} refLen=${hasRef ? state.referenceImage.length : 'N/A'} sessionId=${state.currentSession?.id || 'NEW'}`);
 
@@ -192,7 +415,6 @@ export async function handleGenerate() {
       const imgCount = result.images?.length || 0;
       showToast(imgCount > 0 ? t('toast.generateSuccess', imgCount) : t('toast.generateSuccessSingle'), 'success');
 
-      // 显示调试信息（如果有）
       if (result.debug && imgCount === 0) {
         const dbg = result.debug;
         console.log('[Qwen Debug]', dbg);
@@ -201,8 +423,7 @@ export async function handleGenerate() {
 
       promptInput.value = '';
 
-      // 编辑模式：追加到编辑链，并更新参考图为最新结果（连续迭代）
-      if (state.referenceImage && result.images?.length > 0) {
+      if (state.workMode === 'edit' && state.referenceImage && result.images?.length > 0) {
         const firstImg = result.images[0];
         const newSrc = firstImg.dataUrl || `/api/images/${firstImg.id}`;
         result.images.forEach((img, idx) => {
@@ -212,7 +433,6 @@ export async function handleGenerate() {
             label: t('iteration.version', state.editChain.length),
           });
         });
-        // 更新参考图为最新生成结果，下次修改基于最新版本
         state.referenceImage = newSrc;
         renderEditChain(state.editChain);
       }
@@ -222,10 +442,11 @@ export async function handleGenerate() {
       if (result.sessionId) {
         window.dispatchEvent(new CustomEvent('sessionUpdated', { detail: result }));
       }
-      state.currentSession = result.session || { id: result.sessionId };
 
-      // 生图模式生成后退出编辑态（确保 mode tag 正确）
-      if (!state.referenceImage) {
+      state.currentSession = result.session || { id: result.sessionId, mode: state.workMode || 'draw' };
+      state.sessionModeLocked = true;
+
+      if (!state.referenceImage && state.workMode === 'edit') {
         exitEditMode();
       }
     } else {
@@ -241,25 +462,24 @@ export async function handleGenerate() {
   }
 }
 
-// 设置修改模式
 export function enterEditMode(referenceImage, src, id) {
-  const wasInDrawMode = !state.referenceImage;
+  if (state.workMode === 'img2img') {
+    exitImg2ImgMode();
+  }
+
   state.referenceImage = referenceImage;
+  state.workMode = 'edit';
   promptInput.value = '';
   promptInput.placeholder = t('input.editPlaceholder');
-  const modeTag = document.getElementById('modeTag');
+
   const inputArea = document.getElementById('inputArea');
-  if (modeTag) {
-    modeTag.textContent = '🖊 ' + t('input.editModeBadge');
-    modeTag.classList.remove('edit');
-    void modeTag.offsetWidth;
-    modeTag.classList.add('edit');
-    // 弹跳动画已取消
-  }
   if (inputArea) {
     inputArea.classList.add('edit-mode');
+    inputArea.classList.remove('img2img-mode');
   }
-  // 初始化编辑链：原图为被修改的图片
+
+  updateModeTag();
+
   state.editChain = [{ src, id, label: t('iteration.original') }];
   renderEditChain(state.editChain);
   promptInput.focus();
@@ -270,15 +490,13 @@ export function exitEditMode() {
   state.editChain = [];
   refImagePreview.classList.add('hidden');
   promptInput.placeholder = t('input.placeholder');
-  const modeTag = document.getElementById('modeTag');
+
   const inputArea = document.getElementById('inputArea');
-  if (modeTag) {
-    modeTag.textContent = '🎨 ' + t('input.drawModeBadge');
-    modeTag.classList.remove('edit');
-    // 弹跳动画已取消
-  }
   if (inputArea) {
     inputArea.classList.remove('edit-mode');
   }
+
+  state.workMode = 'draw';
+  updateModeTag();
   clearChain();
 }

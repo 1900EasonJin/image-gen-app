@@ -25,8 +25,12 @@ const translations = {
     'input.placeholder': '输入你的图片描述，文本绘制用"双引号"包裹',
     'input.editPlaceholder': '描述你想要修改的部分...',
     'input.noModel': '未选择模型',
-    'input.drawModeBadge': '生图模式',
+    'input.drawModeBadge': '文生图模式',
     'input.editModeBadge': '修改模式',
+    'input.img2imgModeBadge': '图生图模式',
+    'input.img2imgPlaceholder': '描述你想要生成的最终效果...',
+    'input.img2imgDropText': '拖放图片到此处，或点击选择文件',
+    'input.img2imgFromStation': '从中转站选择',
     'input.exitEditMode': '退出修改模式 ✕',
     'input.count': '数量',
     'input.resolution': '分辨率',
@@ -34,6 +38,13 @@ const translations = {
     // Gallery
     'gallery.title': '已生成图片',
     'gallery.empty': '暂无生成记录',
+
+    // Station
+    'station.title': '📦 图片中转站',
+    'station.empty': '暂无收藏图片，在画布或画廊中点击图片上的收藏按钮即可添加',
+    'station.confirm': '确认选择',
+    'station.added': '已收藏到中转站',
+    'station.removed': '已从中转站移除',
 
     // Iteration
     'iteration.title': '迭代历史',
@@ -99,6 +110,7 @@ const translations = {
     'toast.textStyleTodo': '文本样式功能待实现',
     'toast.modelIdRequired': '请输入模型 ID',
     'toast.apiKeyRequired': '请输入 API Key',
+    'toast.modeLocked': '当前会话已锁定模式，请新建画布后切换',
 
     // App actions
     'toast.archived': '已归档',
@@ -151,12 +163,23 @@ const translations = {
     'input.noModel': 'No model selected',
     'input.drawModeBadge': 'Draw Mode',
     'input.editModeBadge': 'Edit Mode',
+    'input.img2imgModeBadge': 'Image-to-Image Mode',
+    'input.img2imgPlaceholder': 'Describe the final result you want...',
+    'input.img2imgDropText': 'Drop image here, or click to select',
+    'input.img2imgFromStation': 'Choose from Station',
     'input.exitEditMode': 'Exit Edit Mode ✕',
     'input.count': 'Count',
     'input.resolution': 'Resolution',
 
     'gallery.title': 'Generated Images',
     'gallery.empty': 'No images yet',
+
+    // Station
+    'station.title': '📦 Image Station',
+    'station.empty': 'No collected images. Click the collect button on images in canvas or gallery to add.',
+    'station.confirm': 'Confirm Selection',
+    'station.added': 'Added to station',
+    'station.removed': 'Removed from station',
 
     'iteration.title': 'Iteration History',
     'iteration.original': 'Original',
@@ -215,6 +238,7 @@ const translations = {
     'toast.textStyleTodo': 'Text style feature coming soon',
     'toast.modelIdRequired': 'Please enter a model ID',
     'toast.apiKeyRequired': 'Please enter an API Key',
+    'toast.modeLocked': 'This session mode is locked. Create a new canvas to switch modes.',
 
     'toast.archived': 'Archived',
     'toast.archiveFailed': 'Archive failed',

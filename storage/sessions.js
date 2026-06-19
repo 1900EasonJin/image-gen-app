@@ -28,6 +28,7 @@ export function loadSessions() {
           prompt: data.prompt?.substring(0, 50) || '',
           provider: data.provider,
           model: data.model,
+          mode: data.mode || 'draw',
           createdAt: data.createdAt,
           updatedAt: data.updatedAt,
           iterationCount: data.iterations?.length || 0,
@@ -54,6 +55,7 @@ export function loadArchivedSessions() {
           prompt: data.prompt?.substring(0, 50) || '',
           provider: data.provider,
           model: data.model,
+          mode: data.mode || 'draw',
           createdAt: data.createdAt,
           updatedAt: data.updatedAt,
           iterationCount: data.iterations?.length || 0,
@@ -172,13 +174,14 @@ export function loadArchivedSession(id) {
 }
 
 /** 创建新会话 */
-export function createSession({ prompt, provider, model }) {
+export function createSession({ prompt, provider, model, mode = 'draw' }) {
   const id = `ses_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
   const session = {
     id,
     prompt,
     provider,
     model,
+    mode,
     iterations: [],
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),

@@ -1,5 +1,6 @@
 import state from '../state.js';
 import { t } from '../i18n.js';
+import { showToast } from '../utils/toast.js';
 
 const statusTag = document.getElementById('statusTag');
 const modeToggle = document.getElementById('modeToggle');
@@ -26,11 +27,22 @@ export function init() {
     modeToggle.querySelectorAll('.mode-option').forEach(btn => {
       btn.addEventListener('click', () => {
         const mode = btn.dataset.mode;
+        if (state.workMode === mode) return;
+
+        if (state.sessionModeLocked) {
+          showToast(t('toast.modeLocked'), 'info');
+          return;
+        }
+
+        const prevMode = state.workMode;
         modeToggle.querySelectorAll('.mode-option').forEach(b => b.classList.remove('active'));
         btn.classList.add('active');
         state.workMode = mode;
         // 滑动动画
         modeToggle.classList.toggle('img2img', mode === 'img2img');
+
+        // 通知模式切换
+        window.dispatchEvent(new CustomEvent('workModeChanged', { detail: { mode, prevMode } }));
       });
     });
   }

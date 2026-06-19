@@ -121,6 +121,22 @@
           <div class="input-area" id="inputArea">
             <div class="input-wrapper">
               <div class="dialog-resize-handle" id="inputGrabHandle"></div>
+              <!-- 图生图拖放上传区 -->
+              <div class="img2img-drop-zone collapsed" id="img2imgDropZone">
+                <input type="file" accept="image/*" class="img2img-file-input" id="img2imgFileInput" />
+                <div class="img2img-drop-content" id="img2imgDropContent">
+                  <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+                  <span class="img2img-drop-label" data-i18n="input.img2imgDropText">拖放图片到此处，或点击选择文件</span>
+                </div>
+                <div class="img2img-preview-wrapper hidden" id="img2imgPreviewWrapper"></div>
+                <!-- 单图删除已改为每个缩略图独立 X 按钮，不再使用一键删除 -->
+              </div>
+              <div class="img2img-station-row collapsed" id="img2imgStationRow">
+                <button class="img2img-station-link" id="img2imgStationLink">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2M9 5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2M9 5a2 2 0 0 0 2 2h2a2 2 0 0 0 2-2"/></svg>
+                  <span data-i18n="input.img2imgFromStation">从中转站选择</span>
+                </button>
+              </div>
               <textarea class="prompt-input" id="promptInput" data-i18n-placeholder="input.placeholder" placeholder="输入你的图片描述，文本绘制用&quote;双引号&quote;包裹" rows="2"></textarea>
               <div class="ref-image-preview hidden" id="refImagePreview">
                 <img id="refImageThumb" src="" alt="参考图" />
@@ -132,7 +148,7 @@
             <div class="input-toolbar">
               <div class="input-toolbar-left">
                 <span class="model-badge" id="modelBadge" data-i18n="input.noModel">未选择模型</span>
-                <span class="mode-tag" id="modeTag" data-i18n="input.drawModeBadge">🎨 生图模式</span>
+                <span class="mode-tag" id="modeTag" data-i18n="input.drawModeBadge">🎨 文生图模式</span>
                 <label class="param-group">
                   <span data-i18n="input.resolution">分辨率</span>
                   <div class="size-selector" id="sizeSelector">
@@ -219,6 +235,26 @@
       <div class="modal-actions">
         <button class="btn btn-secondary" id="editModalCancel" data-i18n="editModal.cancel">取消</button>
         <button class="btn btn-primary" id="editModalSubmit" data-i18n="editModal.submit">开始修改</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 中转站弹窗 -->
+  <div class="modal hidden" id="stationModal">
+    <div class="modal-overlay"></div>
+    <div class="modal-content modal-wide">
+      <div class="modal-header">
+        <h3 data-i18n="station.title">📦 图片中转站</h3>
+        <button class="btn-icon" id="stationModalClose">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+      </div>
+      <div class="station-grid" id="stationGrid">
+        <p class="text-hint" data-i18n="station.empty">暂无收藏图片，在画布或画廊中点击图片上的收藏按钮即可添加</p>
+      </div>
+      <div class="station-footer hidden" id="stationFooter">
+        <span class="station-count" id="stationCount"></span>
+        <button class="btn btn-primary" id="stationConfirmBtn" data-i18n="station.confirm">确认选择</button>
       </div>
     </div>
   </div>

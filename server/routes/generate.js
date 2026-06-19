@@ -179,6 +179,7 @@ router.post('/', async (req, res, next) => {
         prompt,
         model,
         provider,
+        mode: mode || 'draw',
         referenceImage: !!referenceImage,
         images: savedImages.map((img) => ({
           id: img.id,
@@ -191,11 +192,13 @@ router.post('/', async (req, res, next) => {
         prompt,
         provider,
         model,
+        mode: mode || 'draw',
       });
       session = appendIteration(session.id, {
         prompt,
         model,
         provider,
+        mode: mode || 'draw',
         referenceImage: !!referenceImage,
         images: savedImages.map((img) => ({
           id: img.id,

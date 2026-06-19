@@ -1,6 +1,6 @@
 import { init as sidebarInit } from './components/sidebar.js';
 import { init as settingsInit } from './components/settings.js';
-import { init as inputInit, enterEditMode, exitEditMode } from './components/input-area.js';
+import { init as inputInit, enterEditMode, exitEditMode, exitImg2ImgMode } from './components/input-area.js';
 import { renderResult, setPrompt, showEmpty } from './components/result-grid.js';
 import { init as lightboxInit, open as openLightbox } from './components/lightbox.js';
 import { init as workAreaInit } from './components/work-area.js';
@@ -8,6 +8,7 @@ import { init as galleryPanelInit } from './components/gallery-panel.js';
 import { clearChain } from './components/iteration-chain.js';
 import { clearGallery, appendToGallery } from './components/gallery-panel.js';
 import { init as languageInit } from './components/language.js';
+import { init as stationInit } from './components/transfer-station.js';
 import { showToast } from './utils/toast.js';
 import { fetchSessions, fetchArchivedSessions, deleteSession as deleteSessionApi, archiveSession as archiveSessionApi, unarchiveSession as unarchiveSessionApi, deleteArchivedSession as deleteArchivedSessionApi, renameSession as renameSessionApi, renameArchivedSession as renameArchivedSessionApi } from './api.js';
 import state from './state.js';
@@ -189,6 +190,7 @@ async function init() {
   inputInit();
   workAreaInit();
   galleryPanelInit();
+  stationInit();
   // initCanvasResize(); // 旧版画布拖拽（卡片间），已替换为 inputGrabHandle
   initInputResize();
 
@@ -310,6 +312,24 @@ async function init() {
   });
 }
 
+function applySessionMode(mode, { lock = false } = {}) {
+  const normalizedMode = mode === 'img2img' ? 'img2img' : 'draw';
+  const prevMode = state.workMode;
+  state.workMode = normalizedMode;
+  state.sessionModeLocked = lock;
+
+  const modeToggle = document.getElementById('modeToggle');
+  if (modeToggle) {
+    modeToggle.classList.toggle('img2img', normalizedMode === 'img2img');
+    modeToggle.querySelectorAll('.mode-option').forEach(b => b.classList.remove('active'));
+    modeToggle.querySelector(`[data-mode="${normalizedMode}"]`)?.classList.add('active');
+  }
+
+  if (prevMode !== normalizedMode || normalizedMode === 'img2img') {
+    window.dispatchEvent(new CustomEvent('workModeChanged', { detail: { mode: normalizedMode, prevMode } }));
+  }
+}
+
 function newSession() {
   state.currentSession = null;
   state.referenceImage = null;
@@ -318,7 +338,11 @@ function newSession() {
   document.getElementById('promptInput').value = '';
   document.getElementById('promptInput').placeholder = t('input.placeholder');
 
+  state.sessionModeLocked = false;
   exitEditMode();
+  exitImg2ImgMode();
+  applySessionMode('draw', { lock: false });
+
   showEmpty();
   clearChain();
   clearGallery();
@@ -589,8 +613,10 @@ async function loadSessionDetail(sessionId) {
     const session = data.session;
     state.currentSession = session;
 
-    // 浏览历史时确保退出编辑模式（生图模式）
+    // 浏览历史时退出编辑状态，并恢复该会话创建时选定的模式
     exitEditMode();
+    exitImg2ImgMode();
+    applySessionMode(session.mode || 'draw', { lock: true });
 
     // 浏览历史时清空输入框
     const promptInput = document.getElementById('promptInput');

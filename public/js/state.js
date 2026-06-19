@@ -16,8 +16,10 @@ const state = {
   models: {},
   // 最近一次 prompt（用于 Lightbox 显示）
   lastPrompt: '',
-  // 工作区模式：draw | edit
+  // 工作区模式：draw | img2img | edit
   workMode: 'draw',
+  // 当前会话是否已锁定顶部模式切换
+  sessionModeLocked: false,
   // 编辑链（前端维护，用于迭代历史展示）
   editChain: [],
 };
