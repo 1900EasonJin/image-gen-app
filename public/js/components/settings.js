@@ -42,7 +42,8 @@ async function render() {
     const connected = state.providers[provider.id]?.connected || false;
     const models = state.models[provider.id] || [];
     const savedKey = state.providers[provider.id]?.apiKey || '';
-    const hasSavedKey = connected || savedKey;
+    const hasSavedKey = connected || state.providers[provider.id]?.hasKey || savedKey;
+    const placeholder = hasSavedKey ? t('settings.apiKeySaved') : t('settings.apiKeyPlaceholder');
 
     const card = document.createElement('div');
     card.className = 'settings-provider-card';
@@ -93,7 +94,7 @@ async function render() {
         <input
           type="password"
           class="input"
-          placeholder="${t('settings.apiKeyPlaceholder')}"
+          placeholder="${placeholder}"
           value="${savedKey}"
           data-provider-id="${provider.id}"
         />

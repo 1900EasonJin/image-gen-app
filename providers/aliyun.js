@@ -82,20 +82,29 @@ export default {
       safeLog(`[Qwen-text2img] model=${model} n=${n || 1} size=${size} prompt="${prompt.substring(0, 50)}" (无参考图)`);
     }
 
+    // 诊断：检查 apiKey 是否含非 ASCII 字符
+    const authHeader = `Bearer ${apiKey}`;
+    const nonAscii = [...authHeader].filter(c => c.charCodeAt(0) > 127).map(c => `U+${c.charCodeAt(0).toString(16).toUpperCase()}`);
+    if (nonAscii.length > 0) {
+      console.error('[API Key 诊断] Authorization header 含非 ASCII 字符!', nonAscii);
+      console.error('[API Key 诊断] 完整 header 前80字符:', authHeader.substring(0, 80));
+    } else {
+      console.log('[API Key 诊断] apiKey 纯 ASCII, 长度:', apiKey?.length);
+    }
     const resp = await fetch('https://dashscope.aliyuncs.com/api/v1/services/aigc/multimodal-generation/generation', {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${apiKey}`,
+        'Authorization': authHeader,
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({
+      body: new TextEncoder().encode(JSON.stringify({
         model,
         input: { messages },
         parameters: {
           n: n || 1,
           size: this._normalizeSize(size),
         },
-      }),
+      })),
     });
 
     if (!resp.ok) {
@@ -230,13 +239,22 @@ export default {
 
     // ⚠️ 关键修复：Wan2.7 同步调用必须用 multimodal-generation 端点
     // image-generation 是异步端点，不带 X-DashScope-Async: enable 会返回 403
+    // 诊断：检查 apiKey 是否包含非 ASCII 字符（比如被污染的 bullet •）
+    const authHeader = `Bearer ${apiKey}`;
+    const nonAscii = [...authHeader].filter(c => c.charCodeAt(0) > 127).map(c => `U+${c.charCodeAt(0).toString(16).toUpperCase()}`);
+    if (nonAscii.length > 0) {
+      console.error('[API Key 诊断] Authorization header 含非 ASCII 字符!', nonAscii);
+      console.error('[API Key 诊断] 完整 header 前80字符:', authHeader.substring(0, 80));
+    } else {
+      console.log('[API Key 诊断] apiKey 纯 ASCII, 长度:', apiKey?.length);
+    }
     const resp = await fetch('https://dashscope.aliyuncs.com/api/v1/services/aigc/multimodal-generation/generation', {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${apiKey}`,
+        'Authorization': authHeader,
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify(body),
+      body: new TextEncoder().encode(JSON.stringify(body)),
     });
 
     if (!resp.ok) {

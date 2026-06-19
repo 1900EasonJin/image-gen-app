@@ -112,7 +112,7 @@ async function loadFromCache() {
       for (const p of result.providers) {
         if (p.connected && p.models.length > 0) {
           state.models[p.id] = p.models;
-          state.providers[p.id] = { connected: true, apiKey: p.maskedKey || '' };
+          state.providers[p.id] = { connected: true, hasKey: true, apiKey: state.providers[p.id]?.apiKey };
         }
       }
       await refreshModelList();
@@ -136,7 +136,7 @@ function backgroundRefresh() {
             changed = true;
           }
           state.models[p.id] = p.models;
-          state.providers[p.id] = { connected: true, apiKey: p.maskedKey || '' };
+          state.providers[p.id] = { connected: true, hasKey: true, apiKey: state.providers[p.id]?.apiKey };
         } else if (!p.connected && prevConnected) {
           changed = true;
           delete state.models[p.id];

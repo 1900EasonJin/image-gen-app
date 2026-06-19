@@ -67,6 +67,7 @@ const translations = {
     'settings.update': '更新',
     'settings.disconnect': '断开',
     'settings.apiKeyPlaceholder': '输入 API Key...',
+    'settings.apiKeySaved': '已保存（需重新输入才能更新）',
     'settings.getModels': '查看模型',
     'settings.connected': '✓ 已连接',
     'settings.disconnectedStatus': '未连接',
