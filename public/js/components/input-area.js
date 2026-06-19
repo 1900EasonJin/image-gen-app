@@ -327,6 +327,17 @@ function enterImg2ImgMode() {
   img2imgDropZone.classList.remove('collapsed');
   img2imgStationRow.classList.remove('collapsed');
 
+  // 恢复之前保存的参考图
+  const savedImages = window.img2imgMultiImages;
+  if (savedImages && savedImages.length > 0 && !img2imgImageData) {
+    img2imgImageData = savedImages[0];
+    state.referenceImage = savedImages[0];
+    img2imgDropContent.classList.add('hidden');
+    img2imgPreviewWrapper.classList.remove('hidden');
+    img2imgDropZone.classList.add('has-image');
+    renderMultiThumbnails(savedImages);
+  }
+
   const inputArea = document.getElementById('inputArea');
   if (inputArea) {
     inputArea.classList.add('img2img-mode');
@@ -346,14 +357,16 @@ export function exitImg2ImgMode() {
     inputArea.classList.remove('img2img-mode');
   }
 
-  if (img2imgImageData) {
-    removeImg2ImgImage();
-  }
-
   requestAnimationFrame(() => {
     if (state.workMode !== 'img2img') {
-      img2imgDropZone.classList.add('collapsed');
-      img2imgStationRow.classList.add('collapsed');
+      // 有参考图时保留预览区可见，只隐藏拖放提示区
+      if (window.img2imgMultiImages && window.img2imgMultiImages.length > 0) {
+        img2imgDropZone.classList.remove('collapsed');
+        img2imgStationRow.classList.add('collapsed');
+      } else {
+        img2imgDropZone.classList.add('collapsed');
+        img2imgStationRow.classList.add('collapsed');
+      }
     }
   });
   promptInput.placeholder = t('input.placeholder');
