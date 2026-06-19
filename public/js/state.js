@@ -22,6 +22,8 @@ const state = {
   sessionModeLocked: false,
   // 编辑链（前端维护，用于迭代历史展示）
   editChain: [],
+  // 当前模型允许的最大参考图数量（图生图模式）
+  maxRefImages: 4,
 };
 
 export default state;

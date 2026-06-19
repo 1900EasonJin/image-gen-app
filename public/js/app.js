@@ -601,6 +601,11 @@ async function loadArchivedSessions() {
 }
 
 async function loadSessionDetail(sessionId) {
+  // 重复点击同一历史记录不重复渲染
+  if (state.currentSession?.id === sessionId) {
+    return;
+  }
+
   try {
     const resp = await fetch(`/api/sessions/${sessionId}`);
     const data = await resp.json();

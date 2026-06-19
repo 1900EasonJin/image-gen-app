@@ -260,6 +260,7 @@ function selectModel(providerId, modelId, modelName) {
   // 查找完整模型信息（含 maxN / sizes）
   const models = state.models[providerId] || [];
   const model = models.find(m => m.id === modelId);
+  state.maxRefImages = model?.maxN ?? 4;
 
   closeDropdown();
   window.dispatchEvent(new CustomEvent('modelSelected', {

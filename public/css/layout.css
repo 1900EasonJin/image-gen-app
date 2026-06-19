@@ -547,24 +547,6 @@
   /* 仅保留动画效果，不留橙色边框 */
 }
 
-.input-area.entering-edit {
-  animation: inputEditEnter 0.24s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-@keyframes inputEditEnter {
-  0% {
-    box-shadow: var(--shadow-sm);
-    transform: translateY(0);
-  }
-  45% {
-    box-shadow: 0 0 0 3px rgba(217, 119, 6, 0.10), var(--shadow-sm);
-    transform: translateY(-2px);
-  }
-  100% {
-    box-shadow: var(--shadow-sm);
-    transform: translateY(0);
-  }
-}
 
 .input-wrapper {
   position: relative;

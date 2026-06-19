@@ -29,6 +29,8 @@ const img2imgFileInput = $('#img2imgFileInput');
 const img2imgDropContent = $('#img2imgDropContent');
 const img2imgPreviewWrapper = $('#img2imgPreviewWrapper');
 const img2imgStationRow = $('#img2imgStationRow');
+const img2imgCounter = $('#img2imgCounter');
+const img2imgCounterText = $('#img2imgCounterText');
 
 let editModeOriginalPlaceholder = '';
 let img2imgOriginalPlaceholder = '';
@@ -58,6 +60,18 @@ function playClassAnimation(el, className, duration) {
   window.setTimeout(() => el.classList.remove(className), duration);
 }
 
+/** 更新参考图数量计数器（当前数/上限） */
+function updateRefImageCounter() {
+  if (!img2imgCounter || !img2imgCounterText) return;
+  const urls = window.img2imgMultiImages;
+  const count = urls ? urls.length : 0;
+  const max = state.maxRefImages || 4;
+  img2imgCounterText.textContent = `${count}/${max}`;
+  img2imgCounter.classList.remove('hidden');
+  img2imgCounter.classList.toggle('full', count >= max);
+  img2imgCounter.classList.toggle('warning', count > 0 && count < max);
+}
+
 export function init() {
   editModeOriginalPlaceholder = promptInput.placeholder;
   img2imgOriginalPlaceholder = t('input.img2imgPlaceholder');
@@ -75,8 +89,14 @@ export function init() {
       modelBadge.textContent = t('input.noModel');
     }
     updateModeTag();
+    updateRefImageCounter();
     const dropLabel = document.querySelector('.img2img-drop-label');
     if (dropLabel) dropLabel.textContent = t('input.img2imgDropText');
+  });
+
+  // 监听模型变化，更新参考图数量上限
+  window.addEventListener('modelSelected', () => {
+    updateRefImageCounter();
   });
 
   // 监听工作区模式切换
@@ -200,15 +220,24 @@ function initImg2ImgDropZone() {
         const urls = Array.isArray(dataUrls) ? dataUrls : [dataUrls];
         if (urls.length === 0) return;
 
-        img2imgImageData = urls[0];
-        state.referenceImage = urls[0];
-        window.img2imgMultiImages = urls;
+        const max = state.maxRefImages || 4;
+        const existing = window.img2imgMultiImages || [];
+        const totalAfterAdd = existing.length + urls.length;
+        if (totalAfterAdd > max) {
+          showToast(`最多只能添加 ${max} 张参考图（已有 ${existing.length} 张）`, 'error');
+          return;
+        }
+
+        window.img2imgMultiImages = [...existing, ...urls];
+        img2imgImageData = window.img2imgMultiImages[0];
+        state.referenceImage = window.img2imgMultiImages[0];
 
         img2imgDropContent.classList.add('hidden');
         img2imgPreviewWrapper.classList.remove('hidden');
         img2imgDropZone.classList.add('has-image');
         img2imgDropZone.classList.remove('drag-over');
-        renderMultiThumbnails(urls);
+        renderMultiThumbnails(window.img2imgMultiImages);
+        updateRefImageCounter();
 
         showToast(`已选择 ${urls.length} 张图片`, 'success');
       });
@@ -262,17 +291,26 @@ function initImg2ImgDropZone() {
 }
 
 function handleImg2ImgFile(file) {
+  const max = state.maxRefImages || 4;
+  const existing = window.img2imgMultiImages || [];
+  if (existing.length >= max) {
+    showToast(`最多只能添加 ${max} 张参考图`, 'error');
+    return;
+  }
+
   const reader = new FileReader();
   reader.onload = () => {
+    const newImages = [...existing, reader.result];
     img2imgImageData = reader.result;
-    state.referenceImage = reader.result;
-    window.img2imgMultiImages = [reader.result];
+    state.referenceImage = existing.length === 0 ? reader.result : state.referenceImage;
+    window.img2imgMultiImages = newImages;
 
     img2imgDropContent.classList.add('hidden');
     img2imgPreviewWrapper.classList.remove('hidden');
     img2imgDropZone.classList.add('has-image');
     img2imgDropZone.classList.remove('drag-over');
-    renderMultiThumbnails([reader.result]);
+    renderMultiThumbnails(newImages);
+    updateRefImageCounter();
     showToast('图片已上传', 'success');
   };
   reader.readAsDataURL(file);
@@ -287,6 +325,7 @@ function removeImg2ImgImage() {
   img2imgPreviewWrapper.innerHTML = '';
   img2imgDropContent.classList.remove('hidden');
   img2imgDropZone.classList.remove('has-image');
+  updateRefImageCounter();
 }
 
 export function resetImg2ImgMode() {
@@ -323,6 +362,7 @@ function renderMultiThumbnails(urls) {
     container.appendChild(delBtn);
     img2imgPreviewWrapper.appendChild(container);
   });
+  updateRefImageCounter();
 }
 
 /** 删除指定索引的单张图片 */
@@ -348,6 +388,7 @@ function removeSingleImage(index) {
     state.referenceImage = urls[0];
     renderMultiThumbnails(urls);
   }
+  updateRefImageCounter();
 }
 
 /** 恢复图生图参考图区预览 */
@@ -569,12 +610,9 @@ async function transitionToEditMode(referenceImage, src, id) {
   if (inputArea) {
     inputArea.classList.add('edit-mode');
     inputArea.classList.remove('img2img-mode');
-    playClassAnimation(inputArea, 'entering-edit', MODE_TIMING.inputEditEnter);
   }
 
   updateModeTag();
-  document.getElementById('modeTag')?.classList.add('bounce');
-  window.setTimeout(() => document.getElementById('modeTag')?.classList.remove('bounce'), 520);
 
   state.editChain = [{ src, id, label: t('iteration.original') }];
   await delay(fromMode === 'img2img' ? 120 : 0);

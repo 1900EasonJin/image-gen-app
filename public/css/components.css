@@ -1358,9 +1358,33 @@
   background: rgb(220, 38, 38);
 }
 
+.img2img-counter {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 10px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: var(--bg-secondary);
+  color: var(--text-secondary);
+  font-size: 12px;
+  font-family: var(--font-sans);
+  line-height: 1.4;
+}
+
+.img2img-counter.warning {
+  border-color: #eab308;
+  color: #eab308;
+}
+
+.img2img-counter.full {
+  border-color: #22c55e;
+  color: #22c55e;
+}
+
 .img2img-station-row {
   display: flex;
   align-items: center;
+  gap: 10px;
   padding: 2px 0 6px 0;
   max-height: 36px;
   opacity: 1;
