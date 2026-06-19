@@ -3,27 +3,42 @@ import { t } from '../i18n.js';
 import { renderResult } from './result-grid.js';
 import { collectImage } from './transfer-station.js';
 
-const galleryList = document.getElementById('galleryList');
-const galleryEmpty = document.getElementById('galleryEmpty');
-const galleryPanel = document.getElementById('galleryPanel');
-const galleryResizeHandle = document.getElementById('galleryResizeHandle');
+const GALLERY_BATCH_SIZE = 20;
+
+const galleryList = typeof document !== 'undefined' ? document.getElementById('galleryList') : null;
+const galleryEmpty = typeof document !== 'undefined' ? document.getElementById('galleryEmpty') : null;
+const galleryPanel = typeof document !== 'undefined' ? document.getElementById('galleryPanel') : null;
+const galleryResizeHandle = typeof document !== 'undefined' ? document.getElementById('galleryResizeHandle') : null;
 
 let galleryItems = [];
+let renderedStartIndex = 0;
+
+export function getInitialGalleryItems(items, batchSize = GALLERY_BATCH_SIZE) {
+  const start = Math.max(0, items.length - batchSize);
+  return items.slice(start);
+}
+
+export function getOlderGalleryItems(items, currentStartIndex, batchSize = GALLERY_BATCH_SIZE) {
+  const start = Math.max(0, currentStartIndex - batchSize);
+  return items.slice(start, currentStartIndex);
+}
 
 export function init() {
   let isResizing = false;
   let resizeStartX = 0;
   let resizeStartWidth = 0;
 
-  galleryResizeHandle.addEventListener('mousedown', (e) => {
-    isResizing = true;
-    resizeStartX = e.clientX;
-    resizeStartWidth = galleryPanel.offsetWidth;
-    galleryResizeHandle.classList.add('active');
-    document.body.style.cursor = 'col-resize';
-    document.body.style.userSelect = 'none';
-    e.preventDefault();
-  });
+  if (galleryResizeHandle && galleryPanel) {
+    galleryResizeHandle.addEventListener('mousedown', (e) => {
+      isResizing = true;
+      resizeStartX = e.clientX;
+      resizeStartWidth = galleryPanel.offsetWidth;
+      galleryResizeHandle.classList.add('active');
+      document.body.style.cursor = 'col-resize';
+      document.body.style.userSelect = 'none';
+      e.preventDefault();
+    });
+  }
 
   document.addEventListener('mousemove', (e) => {
     if (!isResizing) return;
@@ -39,6 +54,14 @@ export function init() {
     document.body.style.cursor = '';
     document.body.style.userSelect = '';
   });
+
+  if (galleryList) {
+    galleryList.addEventListener('scroll', () => {
+      if (galleryList.scrollTop <= 24) {
+        prependOlderImages();
+      }
+    });
+  }
 
   window.addEventListener('imagesGenerated', (e) => {
     const result = e.detail;
@@ -62,18 +85,20 @@ export function init() {
 }
 
 function appendImages(images) {
+  if (!galleryList) return;
   hideEmpty();
 
   images.forEach((img) => {
-    const src = resolveImageSrc(img);
-    if (!src) return;
+    const item = normalizeGalleryItem(img);
+    if (!item) return;
 
-    if (galleryItems.find((item) => item.id === img.id)) return;
+    if (galleryItems.find((existing) => existing.id === item.id)) return;
 
-    galleryItems.push({ id: img.id, src, sourceUrl: img.sourceUrl || img.url || null });
+    galleryItems.push(item);
 
-    const thumb = createThumbElement(img.id, src, img.sourceUrl || img.url || null);
+    const thumb = createThumbElement(item.id, item.src, item.sourceUrl, item.thumbSrc);
     galleryList.appendChild(thumb);
+    renderedStartIndex = Math.max(0, galleryItems.length - galleryList.querySelectorAll('.gallery-thumb').length);
     galleryList.scrollTop = galleryList.scrollHeight;
   });
 }
@@ -84,7 +109,8 @@ export function appendToGallery(images) {
 
 export function clearGallery() {
   galleryItems = [];
-  galleryList.innerHTML = '';
+  renderedStartIndex = 0;
+  if (galleryList) galleryList.innerHTML = '';
   showEmpty();
 }
 
@@ -93,8 +119,8 @@ export function replaceGalleryWithAnimation(images) {
   const hasOldThumbs = thumbs.length > 0;
 
   if (!hasOldThumbs) {
-    clearGallery();
-    appendImagesWithEnterAnimation(images);
+    replaceGalleryItems(images);
+    appendImagesWithEnterAnimation(getInitialGalleryItems(galleryItems));
     return;
   }
 
@@ -105,23 +131,20 @@ export function replaceGalleryWithAnimation(images) {
   });
 
   window.setTimeout(() => {
-    clearGallery();
-    appendImagesWithEnterAnimation(images);
+    replaceGalleryItems(images);
+    appendImagesWithEnterAnimation(getInitialGalleryItems(galleryItems));
   }, 620);
 }
 
 function appendImagesWithEnterAnimation(images) {
-  appendImages(images);
+  const thumbs = renderGalleryItems(images, { animateEnter: true });
+  renderedStartIndex = Math.max(0, galleryItems.length - images.length);
 
-  const thumbs = galleryList.querySelectorAll('.gallery-thumb');
-  thumbs.forEach((thumb, index) => {
-    thumb.style.opacity = '0';
-    thumb.style.transform = 'translateY(8px) scale(0.98)';
-    thumb.style.transition = 'opacity 0.3s ease, transform 0.3s ease';
-    thumb.style.transitionDelay = '0s';
-
+  requestAnimationFrame(() => {
     requestAnimationFrame(() => {
-      requestAnimationFrame(() => {
+      thumbs.forEach((thumb, index) => {
+        const delay = Math.min(index * 35, 280);
+        thumb.style.transitionDelay = `${delay}ms`;
         thumb.style.opacity = '1';
         thumb.style.transform = 'translateY(0) scale(1)';
       });
@@ -129,16 +152,74 @@ function appendImagesWithEnterAnimation(images) {
   });
 }
 
-function createThumbElement(id, src, sourceUrl) {
+function replaceGalleryItems(images) {
+  galleryItems = images.map(normalizeGalleryItem).filter(Boolean);
+  renderedStartIndex = Math.max(0, galleryItems.length - GALLERY_BATCH_SIZE);
+  if (galleryList) galleryList.innerHTML = '';
+  if (galleryItems.length > 0) hideEmpty();
+  else showEmpty();
+}
+
+function renderGalleryItems(items, options = {}) {
+  if (!galleryList) return [];
+  if (items.length > 0) hideEmpty();
+
+  const thumbs = items.map((item) => {
+    const thumb = createThumbElement(item.id, item.src, item.sourceUrl, item.thumbSrc);
+
+    if (options.animateEnter) {
+      thumb.style.opacity = '0';
+      thumb.style.transform = 'translateY(10px) scale(0.97)';
+      thumb.style.transition = 'opacity 0.28s ease, transform 0.28s ease';
+      thumb.style.willChange = 'opacity, transform';
+      thumb.addEventListener('transitionend', () => {
+        thumb.style.willChange = '';
+        thumb.style.transitionDelay = '0s';
+      }, { once: true });
+    }
+
+    galleryList.appendChild(thumb);
+    return thumb;
+  });
+
+  galleryList.scrollTop = galleryList.scrollHeight;
+  return thumbs;
+}
+
+function prependOlderImages() {
+  if (!galleryList || renderedStartIndex <= 0) return;
+
+  const previousHeight = galleryList.scrollHeight;
+  const olderItems = getOlderGalleryItems(galleryItems, renderedStartIndex);
+  const fragment = document.createDocumentFragment();
+
+  olderItems.forEach((item) => {
+    fragment.appendChild(createThumbElement(item.id, item.src, item.sourceUrl, item.thumbSrc));
+  });
+
+  galleryList.prepend(fragment);
+  renderedStartIndex = Math.max(0, renderedStartIndex - olderItems.length);
+  galleryList.scrollTop = galleryList.scrollHeight - previousHeight + galleryList.scrollTop;
+}
+
+function createThumbElement(id, src, sourceUrl, thumbSrc = src) {
   const thumb = document.createElement('div');
   thumb.className = 'gallery-thumb';
   thumb.dataset.id = id;
+  thumb.dataset.fullSrc = src;
   if (sourceUrl) thumb.dataset.sourceUrl = sourceUrl;
 
   const imgEl = document.createElement('img');
-  imgEl.src = src;
   imgEl.alt = id;
   imgEl.loading = 'lazy';
+  imgEl.decoding = 'async';
+  imgEl.addEventListener('load', () => {
+    imgEl.classList.add('loaded');
+  });
+  imgEl.src = thumbSrc;
+  if (imgEl.complete) {
+    imgEl.classList.add('loaded');
+  }
 
   const overlay = document.createElement('div');
   overlay.className = 'gallery-thumb-overlay';
@@ -245,6 +326,17 @@ function showEmpty() {
 
 function hideEmpty() {
   if (galleryEmpty) galleryEmpty.classList.add('hidden');
+}
+
+function normalizeGalleryItem(img) {
+  const src = resolveImageSrc(img);
+  if (!src) return null;
+  return {
+    id: img.id,
+    src,
+    thumbSrc: img.localPath ? `/api/images/${img.id}/thumb` : src,
+    sourceUrl: img.sourceUrl || img.url || null,
+  };
 }
 
 function resolveImageSrc(img) {

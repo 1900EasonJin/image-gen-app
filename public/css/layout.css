@@ -420,9 +420,10 @@
   padding: 24px 8px;
 }
 
-/* 缩略图卡片 — 保持原始比例 */
+/* 缩略图卡片 — 预留空间，避免图片加载前挤成黑线 */
 .gallery-thumb {
   width: 100%;
+  aspect-ratio: 1 / 1;
   border-radius: var(--radius-lg);
   border: 1.5px solid var(--border);
   overflow: hidden;
@@ -445,9 +446,15 @@
 
 .gallery-thumb img {
   width: 100%;
-  height: auto;
-  object-fit: contain;
+  height: 100%;
+  object-fit: cover;
   display: block;
+  opacity: 0;
+  transition: opacity 0.18s ease;
+}
+
+.gallery-thumb img.loaded {
+  opacity: 1;
 }
 
 /* 缩略图悬停操作层 */
