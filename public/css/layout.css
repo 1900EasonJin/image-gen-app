@@ -237,34 +237,6 @@
   background: transparent;
 }
 
-.canvas-grid.canvas-transition-in {
-  position: relative;
-  z-index: 1;
-  opacity: 0;
-  transition: opacity 0.42s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-.canvas-grid.canvas-transition-in.canvas-transition-in-active {
-  opacity: 1;
-}
-
-.canvas-grid.canvas-transition-in .image-card {
-  animation: none !important;
-}
-
-.canvas-ghost-grid {
-  position: absolute;
-  inset: 0;
-  z-index: 2;
-  pointer-events: none;
-  opacity: 1;
-  transition: opacity 0.42s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-.canvas-ghost-grid.canvas-transition-out {
-  opacity: 0;
-}
-
 /* ========== 按数量自适应布局（无滚动条）========== */
 
 /* 1 张：居中单张大图，容器跟随图片实际比例，上下留空隙 */

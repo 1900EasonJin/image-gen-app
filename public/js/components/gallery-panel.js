@@ -88,6 +88,47 @@ export function clearGallery() {
   showEmpty();
 }
 
+export function replaceGalleryWithAnimation(images) {
+  const thumbs = galleryList.querySelectorAll('.gallery-thumb');
+  const hasOldThumbs = thumbs.length > 0;
+
+  if (!hasOldThumbs) {
+    clearGallery();
+    appendImagesWithEnterAnimation(images);
+    return;
+  }
+
+  thumbs.forEach((thumb) => {
+    thumb.style.transition = 'opacity 0.6s ease, transform 0.6s ease';
+    thumb.style.opacity = '0';
+    thumb.style.transform = 'scale(0.92)';
+  });
+
+  window.setTimeout(() => {
+    clearGallery();
+    appendImagesWithEnterAnimation(images);
+  }, 620);
+}
+
+function appendImagesWithEnterAnimation(images) {
+  appendImages(images);
+
+  const thumbs = galleryList.querySelectorAll('.gallery-thumb');
+  thumbs.forEach((thumb, index) => {
+    thumb.style.opacity = '0';
+    thumb.style.transform = 'translateY(8px) scale(0.98)';
+    thumb.style.transition = 'opacity 0.3s ease, transform 0.3s ease';
+    thumb.style.transitionDelay = '0s';
+
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        thumb.style.opacity = '1';
+        thumb.style.transform = 'translateY(0) scale(1)';
+      });
+    });
+  });
+}
+
 function createThumbElement(id, src, sourceUrl) {
   const thumb = document.createElement('div');
   thumb.className = 'gallery-thumb';

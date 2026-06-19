@@ -121,9 +121,10 @@ export function renderResult(images) {
   });
 }
 
-/** 历史会话切换：旧画面保留，新图预加载完成后再交叉淡入淡出 */
+/** 历史会话切换：参考右侧已生成图点击逻辑，先淡出旧图，再渲染新图 */
 export async function renderResultCrossfade(images) {
-  const hasOldCanvas = !canvasGrid.classList.contains('hidden') && canvasGrid.children.length > 0;
+  const currentCards = canvasGrid.querySelectorAll('.image-card');
+  const hasOldCanvas = !canvasGrid.classList.contains('hidden') && currentCards.length > 0;
 
   if (!hasOldCanvas || !images || images.length === 0) {
     renderResult(images);
@@ -132,26 +133,15 @@ export async function renderResultCrossfade(images) {
 
   await preloadImages(images);
 
-  const ghostGrid = canvasGrid.cloneNode(true);
-  ghostGrid.removeAttribute('id');
-  ghostGrid.classList.add('canvas-ghost-grid');
-  ghostGrid.querySelectorAll('[id]').forEach(el => el.removeAttribute('id'));
-  canvasArea.appendChild(ghostGrid);
-
-  renderResult(images);
-  canvasGrid.classList.add('canvas-transition-in');
-
-  requestAnimationFrame(() => {
-    requestAnimationFrame(() => {
-      ghostGrid.classList.add('canvas-transition-out');
-      canvasGrid.classList.add('canvas-transition-in-active');
-    });
+  currentCards.forEach((card) => {
+    card.style.transition = 'opacity 0.6s ease, transform 0.6s ease';
+    card.style.opacity = '0';
+    card.style.transform = 'scale(0.92)';
   });
 
   window.setTimeout(() => {
-    ghostGrid.remove();
-    canvasGrid.classList.remove('canvas-transition-in', 'canvas-transition-in-active');
-  }, 460);
+    renderResult(images);
+  }, 620);
 }
 
 function preloadImages(images) {

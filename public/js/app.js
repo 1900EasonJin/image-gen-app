@@ -6,7 +6,7 @@ import { init as lightboxInit, open as openLightbox } from './components/lightbo
 import { init as workAreaInit } from './components/work-area.js';
 import { init as galleryPanelInit } from './components/gallery-panel.js';
 import { clearChain } from './components/iteration-chain.js';
-import { clearGallery, appendToGallery } from './components/gallery-panel.js';
+import { clearGallery, replaceGalleryWithAnimation } from './components/gallery-panel.js';
 import { init as languageInit } from './components/language.js';
 import { init as stationInit } from './components/transfer-station.js';
 import { showToast } from './utils/toast.js';
@@ -655,7 +655,6 @@ async function loadSessionDetail(sessionId) {
       clearChain();
 
       // 画廊：收集所有迭代的图片
-      clearGallery();
       const allImages = [];
       for (const iter of iterations) {
         for (const img of (iter.images || [])) {
@@ -669,7 +668,7 @@ async function loadSessionDetail(sessionId) {
           }
         }
       }
-      appendToGallery(allImages);
+      replaceGalleryWithAnimation(allImages);
     }
 
     showToast(t('toast.sessionRestored'), 'info');
