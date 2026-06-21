@@ -1,0 +1,151 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
+  <defs>
+    <clipPath id="iconClip">
+      <rect x="10" y="10" width="1004" height="1004" rx="220" ry="220"/>
+    </clipPath>
+  </defs>
+
+  <!-- === Outer frame (Mac app icon style) === -->
+  <rect x="0" y="0" width="1024" height="1024" rx="225" ry="225" fill="#000000"/>
+  <rect x="24" y="24" width="976" height="976" rx="210" ry="210" fill="#ffffff"/>
+
+  <!-- ============================================ -->
+  <!--  BIG BOLD VPN LETTERS — center of icon       -->
+  <!-- ============================================ -->
+  <g transform="translate(512, 510)">
+
+    <!-- === V === -->
+    <!-- Left stroke of V -->
+    <polygon points="-280,-200 -210,220 -150,220 -90,-30 -60,60 -20,220 40,220 120,-200 70,-200 10,80 -30,-80 -60,80 -230,-200" fill="#000000"/>
+    
+    <!-- === P === -->
+    <!-- Vertical bar -->
+    <rect x="150" y="-200" width="60" height="420" rx="6" fill="#000000"/>
+    <!-- P loop -->
+    <path d="M 210 -200 L 340 -200 C 410 -200 460 -150 460 -80 C 460 -10 410 40 340 40 L 210 40 Z" fill="#000000"/>
+    <!-- White cutouts inside P -->
+    <rect x="220" y="-185" width="200" height="55" rx="5" fill="#ffffff"/>
+    <rect x="220" y="-35" width="200" height="40" rx="5" fill="#ffffff"/>
+    <!-- P inner hole -->
+    <rect x="220" y="-130" width="180" height="95" rx="5" fill="#ffffff"/>
+
+    <!-- === N === -->
+    <!-- Left bar -->
+    <rect x="500" y="-200" width="60" height="420" fill="#000000"/>
+    <!-- N diagonal -->
+    <polygon points="560,220 700,220 700,-200 640,-200 640,60 560,-200 500,-200" fill="#000000"/>
+  </g>
+
+  <!-- ============================================ -->
+  <!--  VIPER SNAKE — wrapping through & around     -->
+  <!-- ============================================ -->
+
+  <!-- Snake path through V gap (left side of V) -->
+  <path d="M 80 780
+           C 30 780, 10 740, 10 690
+           C 10 640, 40 610, 80 610
+           C 120 610, 140 640, 140 680
+           C 140 720, 110 750, 70 750"
+        fill="none" stroke="#000000" stroke-width="36" stroke-linecap="round"/>
+
+  <!-- Snake looping over V left arm -->
+  <path d="M 70 750
+           C 40 750, 20 730, 20 700
+           C 20 670, 50 640, 90 640
+           C 130 640, 150 660, 150 690
+           C 150 720, 130 740, 100 740"
+        fill="none" stroke="#000000" stroke-width="32" stroke-linecap="round"/>
+
+  <!-- Snake diving behind V, coming out below -->
+  <path d="M 100 740
+           C 70 740, 50 720, 50 690
+           C 50 660, 70 640, 100 640
+           C 140 640, 170 660, 190 690
+           C 210 720, 220 760, 210 800"
+        fill="none" stroke="#000000" stroke-width="30" stroke-linecap="round"/>
+
+  <!-- Snake body crossing below the letters -->
+  <path d="M 210 800
+           C 200 840, 210 870, 250 880
+           C 300 890, 380 890, 460 880
+           C 540 870, 620 880, 700 890"
+        fill="none" stroke="#000000" stroke-width="28" stroke-linecap="round"/>
+
+  <!-- Snake going up right side behind N -->
+  <path d="M 700 890
+           C 760 890, 800 860, 810 820
+           C 820 780, 800 750, 770 740
+           C 740 730, 720 750, 720 780
+           C 720 810, 740 830, 770 830
+           C 800 830, 820 810, 830 780"
+        fill="none" stroke="#000000" stroke-width="30" stroke-linecap="round"/>
+
+  <!-- Tail wrapping back -->
+  <path d="M 830 780
+           C 840 750, 860 740, 880 750
+           C 900 760, 910 780, 900 810
+           C 890 840, 860 850, 830 840
+           C 790 830, 770 810, 770 790"
+        fill="none" stroke="#000000" stroke-width="26" stroke-linecap="round"/>
+
+  <!-- Rattle segments -->
+  <path d="M 770 790 C 760 780, 755 770, 760 755"
+        fill="none" stroke="#000000" stroke-width="18" stroke-linecap="round"/>
+  <ellipse cx="758" cy="750" rx="14" ry="10" fill="#000000" transform="rotate(-15 758 750)"/>
+  <ellipse cx="750" cy="738" rx="12" ry="8" fill="#000000" transform="rotate(-25 750 738)"/>
+  <ellipse cx="740" cy="725" rx="10" ry="7" fill="#000000" transform="rotate(-30 740 725)"/>
+
+  <!-- ============================================ -->
+  <!--  VIPER HEAD — above the V, striking pose    -->
+  <!-- ============================================ -->
+  
+  <!-- Neck coming from behind V, up to top-left -->
+  <path d="M 210 800
+           C 190 780, 180 740, 180 700
+           C 180 660, 190 620, 220 590
+           C 250 560, 270 550, 280 560"
+        fill="none" stroke="#000000" stroke-width="30" stroke-linecap="round"/>
+
+  <!-- Head approaching V from behind -->
+  <path d="M 280 560
+           C 290 570, 285 590, 270 610
+           C 255 630, 230 640, 210 635
+           C 190 630, 175 610, 175 590"
+        fill="none" stroke="#000000" stroke-width="26" stroke-linecap="round"/>
+
+  <!-- === Diamond viper head === -->
+  <path d="M 140 540
+           L 100 480
+           L 60 510
+           C 40 530, 30 560, 40 590
+           C 50 620, 70 640, 100 650
+           C 130 660, 155 645, 170 620
+           L 190 580 Z"
+        fill="#000000"/>
+
+  <!-- Viper eye (slit) -->
+  <ellipse cx="108" cy="560" rx="10" ry="4" fill="#ffffff" transform="rotate(-20 108 560)"/>
+  <ellipse cx="110" cy="560" rx="3" ry="2" fill="#000000"/>
+
+  <!-- Forked tongue -->
+  <path d="M 85 630 L 50 660" stroke="#000000" stroke-width="7" stroke-linecap="round"/>
+  <path d="M 50 660 L 30 670" stroke="#000000" stroke-width="5" stroke-linecap="round"/>
+  <path d="M 50 660 L 45 680" stroke="#000000" stroke-width="5" stroke-linecap="round"/>
+
+  <!-- ============================================ -->
+  <!--  White accent dots (scales)                  -->
+  <!-- ============================================ -->
+  <circle cx="60" cy="700" r="5" fill="#ffffff"/>
+  <circle cx="120" cy="730" r="4.5" fill="#ffffff"/>
+  <circle cx="170" cy="770" r="4" fill="#ffffff"/>
+  <circle cx="300" cy="885" r="4" fill="#ffffff"/>
+  <circle cx="450" cy="878" r="4" fill="#ffffff"/>
+  <circle cx="600" cy="885" r="4" fill="#ffffff"/>
+  <circle cx="750" cy="800" r="4" fill="#ffffff"/>
+  <circle cx="810" cy="760" r="4" fill="#ffffff"/>
+  
+  <!-- Diamond scale patterns -->
+  <path d="M 80 660 L 90 648 L 100 660 L 90 672 Z" fill="none" stroke="#ffffff" stroke-width="2.5"/>
+  <path d="M 160 710 L 170 698 L 180 710 L 170 722 Z" fill="none" stroke="#ffffff" stroke-width="2.5"/>
+
+</svg>

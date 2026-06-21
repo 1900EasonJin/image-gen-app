@@ -27,17 +27,18 @@ export default {
 
       const data = await resp.json();
 
-      // 不同 Seedream 版本对 n>1 支持不同（实测确认）
-      // 5.0 Lite / 4.x / 3.0 均只返回 1 张
+      // Seedream 各版本支持的尺寸（基于火山官方 API 文档）
+      // 3.0: 仅 1K | 4.0: 1K/2K/4K | 4.5: 2K/4K | 5.0: 2K/3K
+      // 尺寸字母必须大写 K（小写 k 会导致 400 错误）
       const sizeConfig = {
-        'doubao-seedream-5-0-260128': { sizes: ['2k', '1k', '4k'], maxN: 1, sizeFormat: 'short' },
-        'doubao-seedream-5-0-lite-260128': { sizes: ['2k', '1k', '4k'], maxN: 1, sizeFormat: 'short' },
-        'doubao-seedream-4-5-250428': { sizes: ['2k', '1k'], maxN: 1, sizeFormat: 'short' },
-        'doubao-seedream-4-5-251128': { sizes: ['2k', '1k'], maxN: 1, sizeFormat: 'short' },
-        'doubao-seedream-4-0-250528': { sizes: ['2k', '1k'], maxN: 1, sizeFormat: 'short' },
-        'doubao-seedream-4-0-250828': { sizes: ['2k', '1k'], maxN: 1, sizeFormat: 'short' },
-        'doubao-seedream-3-0-250328': { sizes: ['1k'], maxN: 1, sizeFormat: 'short' },
-        'doubao-seedream-3-0-t2i-250415': { sizes: ['1k'], maxN: 1, sizeFormat: 'short' },
+        'doubao-seedream-5-0-260128': { sizes: ['2K', '3K'], maxN: 1, sizeFormat: 'short' },
+        'doubao-seedream-5-0-lite-260128': { sizes: ['2K', '3K'], maxN: 1, sizeFormat: 'short' },
+        'doubao-seedream-4-5-250428': { sizes: ['2K', '4K'], maxN: 1, sizeFormat: 'short' },
+        'doubao-seedream-4-5-251128': { sizes: ['2K', '4K'], maxN: 1, sizeFormat: 'short' },
+        'doubao-seedream-4-0-250528': { sizes: ['2K', '1K', '4K'], maxN: 1, sizeFormat: 'short' },
+        'doubao-seedream-4-0-250828': { sizes: ['2K', '1K', '4K'], maxN: 1, sizeFormat: 'short' },
+        'doubao-seedream-3-0-250328': { sizes: ['1K'], maxN: 1, sizeFormat: 'short' },
+        'doubao-seedream-3-0-t2i-250415': { sizes: ['1K'], maxN: 1, sizeFormat: 'short' },
       };
 
       // 过滤出图片生成模型
@@ -84,26 +85,34 @@ export default {
   },
 
   async text2img({ model, prompt, n, size, apiKey }) {
+    // 规范化 size：确保大写 K（API 要求 "2K" 而非 "2k"）
+    const normalizedSize = (size || '2K').replace(/k$/i, 'K');
+    const normalizedN = n || 1;
+
+    const reqBody = {
+      model,
+      prompt,
+      n: normalizedN,
+      size: normalizedSize,
+      response_format: 'b64_json',
+      watermark: false,
+    };
+
+    console.log(`[Seedream-REQ] model=${model} n=${normalizedN} size=${normalizedSize}`);
+    console.log(`[Seedream-REQ] prompt前80字: ${prompt.substring(0, 80)}`);
+
     const resp = await fetch('https://ark.cn-beijing.volces.com/api/v3/images/generations', {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${apiKey}`,
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({
-        model,
-        prompt,
-        n: n || 1,
-        size: size || '2K',
-        response_format: 'b64_json',
-        watermark: false,
-      }),
+      body: JSON.stringify(reqBody),
     });
-
-    safeLog(`[Seedream-text2img] model=${model} n=${n || 1} size=${size} prompt="${prompt.substring(0, 50)}"`);
 
     if (!resp.ok) {
       const text = await resp.text();
+      console.error(`[Seedream-ERR] HTTP ${resp.status}: ${text.substring(0, 500)}`);
       throw new Error(`火山方舟生图失败 (${resp.status}): ${text}`);
     }
 

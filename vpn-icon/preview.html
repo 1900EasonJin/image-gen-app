@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>VPN 应用图标预览</title>
+<style>
+  body { background: #f0f0f0; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; font-family: -apple-system, sans-serif; gap: 40px; padding: 40px; }
+  .icon-wrapper { background: #fff; padding: 40px; border-radius: 30px; box-shadow: 0 20px 60px rgba(0,0,0,0.15); }
+  .icon-wrapper svg { width: 256px; height: 256px; display: block; }
+  .mac-mock { display: flex; flex-direction: column; align-items: center; gap: 20px; }
+  .mac-mock .label { font-size: 14px; color: #666; }
+  h2 { color: #333; margin: 0; }
+  .desc { color: #666; max-width: 500px; text-align: center; line-height: 1.6; }
+  .preview-grid { display: flex; gap: 30px; align-items: center; flex-wrap: wrap; justify-content: center; }
+  .size-label { font-size: 12px; color: #999; text-align: center; margin-top: 8px; }
+</style>
+</head>
+<body>
+  <h2>🐍 VPN 应用图标预览</h2>
+  <p class="desc">黑白配色 · 圆角矩形 Mac 应用图标 · 蝰蛇 + VPN 字母融合</p>
+  
+  <div class="preview-grid">
+    <div class="mac-mock">
+      <div class="icon-wrapper">
+        <img src="vpn-icon.svg" alt="VPN Icon" width="256" height="256">
+      </div>
+      <div class="label">256×256</div>
+    </div>
+    <div class="mac-mock">
+      <div class="icon-wrapper" style="padding: 20px;">
+        <img src="vpn-icon.svg" alt="VPN Icon" width="512" height="512">
+      </div>
+      <div class="label">512×512 (预览)</div>
+    </div>
+    <div class="mac-mock">
+      <div class="icon-wrapper" style="padding: 8px; border-radius: 12px;">
+        <img src="vpn-icon.svg" alt="VPN Icon" width="80" height="80">
+      </div>
+      <div class="label">80×80 (Dock 大小)</div>
+    </div>
+  </div>
+
+  <div style="margin-top: 20px; background: #fff; border-radius: 16px; padding: 30px; max-width: 700px; box-shadow: 0 10px 40px rgba(0,0,0,0.08);">
+    <h3>📝 生图提示词</h3>
+    <p style="font-size: 14px; color: #888;">复制下方提示词到 Midjourney / DALL·E / Stable Diffusion 等工具使用：</p>
+    <div style="background: #f5f5f5; border-radius: 12px; padding: 20px; font-size: 14px; line-height: 1.7; color: #333; white-space: pre-wrap; word-break: break-word; font-family: monospace;">
+EN: A macOS app icon in rounded rectangle frame, black and white color scheme only. The letters "VPN" in bold, large, modern sans-serif typography centered in the icon. A viper snake (diamond-shaped head, forked tongue) wraps around and intertwines with the VPN letters — the snake body coils through the V and around the P and N. Clean minimalist design, high contrast black on white, no gradients, no gray areas, pure black and white only. Apple-style app icon, 1024x1024, flat design vector style, sharp edges, professional.
+
+CN: macOS 应用图标，圆角矩形外框，仅黑白两色。"VPN"三个字母粗体大号居中显示，一条蝰蛇（菱形蛇头、分叉舌头）缠绕并与 VPN 字母交织——蛇身从 V 中穿过并环绕 P 和 N。干净极简设计，高对比度黑底白字/白底黑字，无渐变无灰色，纯黑白配色。Apple 风格应用图标，1024x1024，扁平矢量风格，边缘锐利，专业质感。
+    </div>
+  </div>
+</body>
+</html>
